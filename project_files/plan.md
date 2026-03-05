@@ -1,10 +1,23 @@
 # Implementation Plan
 
+## Architecture
+
+Hybrid approach: a Python script fetches all sources in parallel and outputs raw markdown content to stdout. A Claude Code slash command runs the script, reads the output, and extracts/filters/formats events.
+
+```
+/find-activities "March 7, only Vancouver, live music"
+  → Claude parses parameters (date, cities, activity types)
+  → Claude runs: python3 scripts/fetch_sources.py --date 2026-03-07
+  → Script fetches all 5 sources in parallel, converts HTML→markdown, outputs to stdout
+  → Claude reads stdout, extracts events, filters by city/type, formats output table
+```
+
 ## Output
 
-Two files:
+Three deliverables:
+- `scripts/fetch_sources.py` — Python script that fetches all sources in parallel and outputs raw content
 - `CLAUDE.md` — Agent configuration (cities, activity types, sources, behavior rules)
-- `.claude/commands/find-activities.md` — Slash command with search procedure
+- `.claude/commands/find-activities.md` — Slash command that runs the script, extracts events, filters, and formats output
 
 ---
 
@@ -46,29 +59,77 @@ Default behavior: search all types. User narrows by specifying types in their qu
 
 ## Step 3: CLAUDE.md — Source List
 
-Define the 14 curated sources with their URLs:
+5 curated sources. Each source is fetched by the Python script (`scripts/fetch_sources.py`). No broad web search.
 
-**Local aggregators:**
-- https://do604.com/events/
-- https://604now.com/events
-- https://miss604.com/events/
-- dailyhive.com/vancouver/listed
+For all URL patterns below, `{YYYY}`, `{MM}`, and `{DD}` are replaced with the target date values.
 
-**Venue/genre-specific:**
-- vancouvercivictheatres.com/events/
-- rhythmchanges.ca/gigs/
-- theinfidelsjazz.ca/events/list/
+---
 
-**Broad aggregators:**
-- showhub.ca/weekly-listings/ (live music at bars/breweries/venues)
-- vancouversbestplaces.com/events-calendar/ (broad events)
-- straight.com/listings/events (Georgia Straight)
-- vancouverisawesome.com/local-events (event calendar)
-- thefraservalley.ca/events-directory/ (Fraser Valley: Langley, Abbotsford, etc.)
-- destinationvancouver.com/explore-vancouver/events (tourism/major events)
-- songkick.com/metro-areas/27398-canada-vancouver (concerts/touring artists)
+### Source 1: Do604
 
-Each source is fetched directly via WebFetch. No broad web search.
+- **Type:** Local aggregator (all event types)
+- **Strategy:** HTML scrape
+- **URL pattern:** `https://do604.com/events/{YYYY}/{MM}/{DD}`
+- **Date filtering:** Built into URL — returns only events for the target date
+- **Date in URL:** Yes
+- **Fields available:** Event name, venue, city, time
+- **Example:** `https://do604.com/events/2026/03/07`
+
+---
+
+### Source 2: Daily Hive Vancouver
+
+- **Type:** Local aggregator (all event types)
+- **Strategy:** HTML scrape
+- **URL pattern:** `https://dailyhive.com/vancouver/listed/events?after={YYYY}-{MM}-{DD}&before={YYYY}-{MM}-{DD}`
+- **Date filtering:** Built into URL query params — returns events overlapping the target date
+- **Date in URL:** Yes
+- **Fields available:** Event name, venue, city, date range
+- **Note:** Returns multi-day events that span the target date, not just single-day events. Agent must check if the event actually occurs on the target date.
+- **Example:** `https://dailyhive.com/vancouver/listed/events?after=2026-03-07&before=2026-03-07`
+
+---
+
+### Source 3: Rhythm Changes
+
+- **Type:** Jazz & live music listings
+- **Strategy:** HTML scrape
+- **URL pattern:** `https://rhythmchanges.ca/gigs/`
+- **Date filtering:** Not in URL — page lists an entire month of gigs organized by week (Sun-Sat). The script calculates which week the target date falls in and notes it in the output header so Claude can focus on the right section.
+- **Date in URL:** No (static URL)
+- **Week sections on page:** Week 1 (Sun Mar 1 – Sat Mar 7), Week 2 (Sun Mar 8 – Sat Mar 14), etc.
+- **Fields available:** Event name, venue, city, date, time
+- **Example:** `https://rhythmchanges.ca/gigs/`
+
+---
+
+### Source 4: ShowHub
+
+- **Type:** Local live music & shows
+- **Strategy:** HTML scrape
+- **URL pattern:** `https://showhub.ca/weekly-listings/`
+- **Date filtering:** Not in URL — page lists an entire week of shows. Agent must filter events by the target date from the page content.
+- **Date in URL:** No (static URL)
+- **Fields available:** Event name, venue, city, date, time
+- **Example:** `https://showhub.ca/weekly-listings/`
+
+---
+
+### Source 5: Infidels Jazz
+
+- **Type:** Jazz events
+- **Strategy:** WordPress REST API (JSON) — the HTML pages are JS-rendered and return empty shells, so we use the API directly
+- **URL pattern:** `https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date={YYYY}-{MM}-{DD}&end_date={YYYY}-{MM}-{DD}`
+- **Date filtering:** Built into URL query params — returns only events on the target date
+- **Date in URL:** Yes
+- **Fields available:** Event name, venue, city, address, time, ticket price, description, event URL
+- **Example:** `https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date=2026-03-07&end_date=2026-03-07`
+
+---
+
+### Dropped sources
+
+- **vancouversbestplaces.com** — JS-rendered HTML returns no content; WP REST API (`/wp-json/wp/v2/posts`) returns editorial blog posts (e.g., "Spring Break guide"), not structured event listings. Not useful for individual event extraction.
 
 ---
 
@@ -94,50 +155,67 @@ Define the output table format:
 
 ---
 
-## Step 6: Slash Command — Parameter Parsing
+## Step 6: Fetch Script — `scripts/fetch_sources.py`
+
+Python script that fetches all sources in parallel.
+
+**Input:** `--date YYYY-MM-DD` (required)
+
+**Dependencies:** `aiohttp`, `html2text` (listed in `requirements.txt`)
+
+**Behavior:**
+- Construct source URLs from the target date using the patterns in Step 3
+- Fetch all 5 sources concurrently with asyncio/aiohttp
+- Convert HTML responses to markdown via html2text
+- For Infidels Jazz (JSON API): format the JSON response as readable text (event name, venue, time, etc.)
+- For Rhythm Changes: calculate which week section the target date falls in and note it in the output header
+- Print each source's content to stdout with clear delimiters:
+  ```
+  === SOURCE: Do604 (https://do604.com/events/2026/03/07) ===
+  [markdown content]
+
+  === SOURCE: Daily Hive (...) ===
+  [markdown content]
+  ```
+- If a source fails, print error instead of content:
+  ```
+  === SOURCE: Do604 (ERROR: Connection timeout) ===
+  ```
+- Exit 0 even if some sources fail (partial results are fine)
+
+---
+
+## Step 7: Slash Command — Parameter Parsing
 
 `.claude/commands/find-activities.md` starts by instructing Claude to parse:
 
 - **Date**: from user query, default to today's date
 - **Cities**: determine mode (default / additive / override) based on user phrasing
 - **Activity types**: from user query, default to all types
-- **Venue types**: from user query, default to no venue filter
 
 ---
 
-## Step 7: Slash Command — Source Fetching
+## Step 8: Slash Command — Run Fetch Script
 
-For each source in the curated list:
-1. Construct the appropriate URL (some sources may need date-specific URLs)
-2. WebFetch the page
-3. If fetch fails, note the source as unreachable and continue
+Run `python3 scripts/fetch_sources.py --date {YYYY-MM-DD}` and read the stdout output.
 
 ---
 
-## Step 8: Slash Command — Event Extraction
+## Step 9: Slash Command — Event Extraction
 
-For each fetched page:
-1. Parse the page content to identify individual events
+For each source section in the script output:
+1. Parse the content to identify individual events
 2. Extract: event name, location/city, exact address (if available), time, event page URL
 3. Categorize by activity type based on content
 
 ---
 
-## Step 9: Slash Command — Filtering
+## Step 10: Slash Command — Filtering
 
 Apply filters in order:
-1. **Date**: keep only events matching the target date exactly
+1. **Date**: keep only events matching the target date exactly (for sources without date-filtered URLs)
 2. **City**: keep only events in the resolved city list
 3. **Activity type**: if specified, keep only matching categories
-
----
-
-## Step 10: Slash Command — Deduplication
-
-Identify duplicate events across sources:
-- Same event name + same venue + same date = duplicate
-- Keep the entry with the most complete information (address, time)
-- Note in Source Link column if found on multiple sources
 
 ---
 
@@ -164,7 +242,8 @@ Build a regression test baseline:
 
 ## Future Enhancements (not v1)
 
-- Custom MCP server for parallel fetching, caching, and programmatic dedup
+- Deduplication command/skill — separate pass to tidy up the raw table, merge duplicates across sources
+- Custom MCP server for caching and programmatic dedup
 - Add general aggregators (Eventbrite, Ticketmaster, SeatGeek, Bandsintown)
 - Add more local sources (venue websites, city tourism pages)
 - Save results to file for reference
