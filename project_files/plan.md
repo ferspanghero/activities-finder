@@ -161,7 +161,7 @@ Python script that fetches all sources in parallel.
 
 **Input:** `--date YYYY-MM-DD` (required)
 
-**Dependencies:** `aiohttp`, `html2text` (listed in `requirements.txt`)
+**Dependencies:** `aiohttp`, `html2text` (listed in `requirements.txt`; test deps: `pytest`, `pytest-asyncio`, `aioresponses`)
 
 **Behavior:**
 - Construct source URLs from the target date using the patterns in Step 3
@@ -229,14 +229,28 @@ Format results as the markdown table. Group by city if results span multiple cit
 
 ---
 
-## Step 12: Ground Truth Testing
+## Step 12: Fetch Script Tests
 
-Build a regression test baseline:
-1. Run `/find-activities` for a past date (Feb 28, 2026 and March 1, 2026)
-2. Store the full output (all events found, from all sources)
-3. User reviews and validates the output manually
-4. This becomes the "golden" dataset — future prompt changes must still retrieve these same events
-5. If a prompt change causes events to be missed, the diff highlights what broke
+Tests for `scripts/fetch_sources.py` using pytest. Test file: `tests/test_fetch_sources.py`.
+
+### Unit tests (no network)
+
+- **URL construction**: Given a date, assert correct URL for each of the 5 sources
+- **Rhythm Changes week calculation**: Given dates across different weeks (Mar 1, Mar 8, Mar 15, Mar 29), assert correct week number
+- **Output delimiters**: Assert each source section starts with `=== SOURCE: Name (url) ===`
+- **Infidels Jazz JSON formatting**: Given sample API JSON response, assert readable text output with event name, venue, time
+- **HTML→markdown conversion**: Given sample HTML snippet, assert clean markdown output
+
+### Unit tests (mocked HTTP)
+
+- **Parallel fetching**: Mock aiohttp responses for all 5 sources, assert all are fetched and output contains 5 sections
+- **Partial failure**: Mock 1 source as unreachable (timeout/connection error), assert output contains error for that source and content for the other 4
+- **All sources down**: Mock all sources failing, assert output has 5 error sections and script exits 0
+
+### Integration test (hits real sources, slow)
+
+- **End-to-end**: Run script with a known date, assert output contains all 5 source sections with non-empty content (or expected errors)
+- Mark with `@pytest.mark.integration` so it can be skipped in fast runs
 
 ---
 

@@ -2,20 +2,20 @@
 
 ## Project Setup
 
-- [ ] **T1**: Create `project_files/overview.md`
-- [ ] **T2**: Create `project_files/plan.md`
-- [ ] **T3**: Create `project_files/tasks.md`
+- [x] **T1**: Create `project_files/overview.md`
+- [x] **T2**: Create `project_files/plan.md`
+- [x] **T3**: Create `project_files/tasks.md`
 
 ## Fetch Script (scripts/fetch_sources.py)
 
-- [ ] **T4**: Create `requirements.txt` with aiohttp and html2text
-- [ ] **T5**: Create `scripts/fetch_sources.py` with source URL construction from `--date` argument
-- [ ] **T6**: Add parallel fetching with asyncio/aiohttp for all 5 sources
-- [ ] **T7**: Add HTML→markdown conversion with html2text for HTML sources
-- [ ] **T8**: Add JSON API handling for Infidels Jazz — format structured JSON as readable text
-- [ ] **T9**: Add Rhythm Changes week calculation — determine which week section the target date falls in and note it in output header
-- [ ] **T10**: Add stdout output with source delimiters (`=== SOURCE: Name (url) ===`)
-- [ ] **T11**: Add error handling — unreachable sources print error instead of content, script exits 0
+- [x] **T4**: Create `requirements.txt` with aiohttp, html2text, pytest, pytest-asyncio, aioresponses
+- [x] **T5**: Create `scripts/fetch_sources.py` with source URL construction from `--date` argument
+- [x] **T6**: Add parallel fetching with asyncio/aiohttp for all 5 sources
+- [x] **T7**: Add HTML→markdown conversion with html2text for HTML sources
+- [x] **T8**: Add JSON API handling for Infidels Jazz — format structured JSON as readable text
+- [x] **T9**: Add Rhythm Changes week calculation — determine which week section the target date falls in and note it in output header
+- [x] **T10**: Add stdout output with source delimiters (`=== SOURCE: Name (url) ===`)
+- [x] **T11**: Add error handling — unreachable sources print error instead of content, script exits 0
 
 ## Agent Configuration (CLAUDE.md)
 
@@ -37,18 +37,36 @@
 - [ ] **T24**: Write output formatting — markdown table, summary line, unreachable source notes
 - [ ] **T25**: Write error handling — unreachable sources noted, no results messaging
 
-## Manual QA
+## Fetch Script Tests (tests/test_fetch_sources.py)
 
-- [ ] **T26**: Test fetch script standalone — `python3 scripts/fetch_sources.py --date 2026-03-07` outputs content from all 5 sources
-- [ ] **T27**: Test fetch script error handling — verify graceful output when a source is unreachable
-- [ ] **T28**: Run `/find-activities` with no parameters — all sources fetched, today's date, all cities, all types
-- [ ] **T29**: Run `/find-activities` with specific city ("only Port Moody") — results filtered correctly
-- [ ] **T30**: Run `/find-activities` with specific activity type ("live music") — only matching events
+### Unit tests (no network)
+
+- [x] **T26**: Test URL construction — given a date, assert correct URL for each of the 5 sources
+- [x] **T27**: Test Rhythm Changes week calculation — dates across different weeks (Mar 1, Mar 8, Mar 15, Mar 29) return correct week number
+- [x] **T28**: Test output delimiters — assert each source section starts with `=== SOURCE: Name (url) ===`
+- [x] **T29**: Test Infidels Jazz JSON formatting — given sample API JSON, assert readable text output
+- [x] **T30**: Test HTML→markdown conversion — given sample HTML, assert clean markdown
+
+### Unit tests (mocked HTTP)
+
+- [x] **T31**: Test parallel fetching — mock all 5 sources, assert output contains 5 sections with content
+- [x] **T32**: Test partial failure — mock 1 source as unreachable, assert error for that source + content for other 4
+- [x] **T33**: Test all sources down — mock all failing, assert 5 error sections and exit 0
+
+### Integration test
+
+- [x] **T34**: Test end-to-end with real sources — run script with a known date, assert 5 source sections with non-empty content. Mark with `@pytest.mark.integration`.
+
+## Manual QA (slash command)
+
+- [ ] **T35**: Run `/find-activities` with no parameters — all sources fetched, today's date, all cities, all types
+- [ ] **T36**: Run `/find-activities` with specific city ("only Port Moody") — results filtered correctly
+- [ ] **T37**: Run `/find-activities` with specific activity type ("live music") — only matching events
 
 ## Future Tasks (not v1)
 
-- [ ] **T31**: Create deduplication command/skill — separate pass to tidy up raw results, merge duplicates across sources
-- [ ] **T32**: Re-add vancouversbestplaces.com once headless browser is available or a usable API is found
-- [ ] **T33**: Explore source URL subsections for targeted fetching (e.g., do604.com/events/music/today)
-- [ ] **T34**: Evaluate adding individual brewery/winery/restaurant venue sites as sources
-- [ ] **T35**: Evaluate MCP server for caching and programmatic dedup
+- [ ] **T38**: Create deduplication command/skill — separate pass to tidy up raw results, merge duplicates across sources
+- [ ] **T39**: Re-add vancouversbestplaces.com once headless browser is available or a usable API is found
+- [ ] **T40**: Explore source URL subsections for targeted fetching (e.g., do604.com/events/music/today)
+- [ ] **T41**: Evaluate adding individual brewery/winery/restaurant venue sites as sources
+- [ ] **T42**: Evaluate MCP server for caching and programmatic dedup
