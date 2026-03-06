@@ -19,23 +19,23 @@
 
 ## Agent Configuration (CLAUDE.md)
 
-- [ ] **T12**: Create `CLAUDE.md` with default city list (25 Metro Vancouver municipalities)
-- [ ] **T13**: Add city modes documentation (default / additive / override) with examples of user phrasing for each mode
-- [ ] **T14**: Add activity types list (8 categories)
-- [ ] **T15**: Add source list with structured metadata (5 sources: type, strategy, URL pattern, date filtering, available fields)
-- [ ] **T16**: Add behavior rules (exhaustive search, free+ticketed, holiday awareness, regular programming)
-- [ ] **T17**: Add output format specification (markdown table: Event Name | City | Exact Address | Time | Source Link)
+- [x] **T12**: Create `CLAUDE.md` with default city list (25 Metro Vancouver municipalities)
+- [x] **T13**: Add city modes documentation (default / additive / override) with examples of user phrasing for each mode
+- [x] **T14**: Add activity types list (8 categories)
+- [x] **T15**: Add source list with structured metadata (5 sources: type, strategy, URL pattern, date filtering, available fields)
+- [x] **T16**: Add behavior rules (exhaustive search, free+ticketed, holiday awareness, regular programming)
+- [x] **T17**: Add output format specification (markdown table: Event Name | City | Exact Address | Time | Source Link)
 
 ## Slash Command (.claude/commands/find-activities.md)
 
-- [ ] **T18**: Create `.claude/commands/` directory
-- [ ] **T19**: Write parameter parsing instructions — date (default: today), cities (mode detection), activity types (default: all)
-- [ ] **T20**: Write city mode resolution logic — detect user intent from phrasing ("only X" = override, "also X" = additive, nothing = default)
-- [ ] **T21**: Write instruction to run fetch script — `python3 scripts/fetch_sources.py --date {YYYY-MM-DD}`
-- [ ] **T22**: Write event extraction instructions — parse script output for event name, city, address, time, category
-- [ ] **T23**: Write filtering logic — exact date match (for static-URL sources), city match, activity type match
-- [ ] **T24**: Write output formatting — markdown table, summary line, unreachable source notes
-- [ ] **T25**: Write error handling — unreachable sources noted, no results messaging
+- [x] **T18**: Create `.claude/commands/` directory
+- [x] **T19**: Write parameter parsing instructions — date (default: today), cities (mode detection), activity types (default: all)
+- [x] **T20**: Write city mode resolution logic — detect user intent from phrasing ("only X" = override, "also X" = additive, nothing = default)
+- [x] **T21**: Write instruction to run fetch script — `python3 scripts/fetch_sources.py --date {YYYY-MM-DD}`
+- [x] **T22**: Write event extraction instructions — parse script output for event name, city, address, time, category
+- [x] **T23**: Write filtering logic — exact date match (for static-URL sources), city match, activity type match
+- [x] **T24**: Write output formatting — markdown table, summary line, unreachable source notes
+- [x] **T25**: Write error handling — unreachable sources noted, no results messaging
 
 ## Fetch Script Tests (tests/test_fetch_sources.py)
 
