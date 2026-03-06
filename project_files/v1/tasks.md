@@ -59,14 +59,12 @@
 
 ## Manual QA (slash command)
 
-- [ ] **T35**: Run `/find-activities` with no parameters — all sources fetched, today's date, all cities, all types
-- [ ] **T36**: Run `/find-activities` with specific city ("only Port Moody") — results filtered correctly
-- [ ] **T37**: Run `/find-activities` with specific activity type ("live music") — only matching events
+- [x] **T35**: Run `/find-activities` with no parameters — all sources fetched, today's date, all cities, all types
+- [x] **T36**: Run `/find-activities` with specific city ("only Port Moody") — results filtered correctly
+- [x] **T37**: Run `/find-activities` with specific activity type ("live music") — only matching events
 
 ## Future Tasks (not v1)
 
 - [ ] **T38**: Create deduplication command/skill — separate pass to tidy up raw results, merge duplicates across sources
-- [ ] **T39**: Re-add vancouversbestplaces.com once headless browser is available or a usable API is found
-- [ ] **T40**: Explore source URL subsections for targeted fetching (e.g., do604.com/events/music/today)
-- [ ] **T41**: Evaluate adding individual brewery/winery/restaurant venue sites as sources
-- [ ] **T42**: Evaluate MCP server for caching and programmatic dedup
+- [ ] **T39**: Evaluate adding individual brewery/winery/restaurant venue sites as sources
+- [ ] **T40**: Evaluate MCP server for caching and programmatic dedup

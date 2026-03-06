@@ -71,3 +71,31 @@ Sources checked: Do604 (12), Daily Hive (8), Rhythm Changes (5), ShowHub (3), In
 If a source had an error, show it: `Rhythm Changes (ERROR: Connection timeout)`
 
 If no events match the filters, say so clearly and suggest broadening the search.
+
+## Step 6: Export HTML
+
+Export results to a self-contained HTML file with sortable columns and clickable links.
+
+1. Build a JSON object with the parsed events data using this schema:
+```json
+{
+  "date": "YYYY-MM-DD",
+  "summary": { "total_events": X, "total_cities": Y, "sources_reporting": Z, "sources_total": 5 },
+  "events": [
+    { "name": "...", "city": "...", "address": "..." or null, "time": "...", "source_name": "...", "source_url": "..." }
+  ],
+  "sources": [
+    { "name": "Do604", "count": N, "error": null },
+    { "name": "Source Name", "count": 0, "error": "error message if any" }
+  ]
+}
+```
+
+2. Pipe the JSON to the HTML generator using a heredoc:
+```bash
+cat <<'EVENTS_JSON' | python3 -m scripts.generate_html --output events-{YYYY-MM-DD}.html
+{json_string}
+EVENTS_JSON
+```
+
+3. Confirm: "HTML report saved to `events-{YYYY-MM-DD}.html`"
