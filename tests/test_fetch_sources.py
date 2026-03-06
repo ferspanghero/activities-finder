@@ -1,6 +1,5 @@
 """Tests for scripts/fetch_sources.py"""
 
-import asyncio
 import json
 from datetime import date
 
@@ -142,7 +141,8 @@ SAMPLE_INFIDELS_API_RESPONSE = json.dumps({
 })
 
 
-def test_fetch_all_sources_success():
+@pytest.mark.asyncio
+async def test_fetch_all_sources_success():
     """All 5 sources return content — output has 5 sections."""
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
@@ -153,7 +153,7 @@ def test_fetch_all_sources_success():
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        result = asyncio.get_event_loop().run_until_complete(fetch_all_sources(target))
+        result = await fetch_all_sources(target)
 
     assert result.count("=== SOURCE:") == 5
     for source in SOURCES.values():
@@ -161,7 +161,8 @@ def test_fetch_all_sources_success():
     assert "ERROR" not in result
 
 
-def test_fetch_partial_failure():
+@pytest.mark.asyncio
+async def test_fetch_partial_failure():
     """1 source fails — output has 4 content sections + 1 error section."""
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
@@ -174,14 +175,15 @@ def test_fetch_partial_failure():
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        result = asyncio.get_event_loop().run_until_complete(fetch_all_sources(target))
+        result = await fetch_all_sources(target)
 
     assert result.count("=== SOURCE:") == 5
     assert "Do604 (ERROR:" in result
     assert result.count("ERROR") == 1
 
 
-def test_fetch_all_sources_down():
+@pytest.mark.asyncio
+async def test_fetch_all_sources_down():
     """All sources fail — output has 5 error sections."""
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
@@ -189,7 +191,7 @@ def test_fetch_all_sources_down():
             url = build_source_url(source_id, target)
             mocked.get(url, exception=Exception("Connection refused"))
 
-        result = asyncio.get_event_loop().run_until_complete(fetch_all_sources(target))
+        result = await fetch_all_sources(target)
 
     assert result.count("=== SOURCE:") == 5
     assert result.count("ERROR") == 5
@@ -201,6 +203,7 @@ import subprocess
 import sys
 
 
+@pytest.mark.integration
 def test_cli_runs_with_date_arg():
     """Script runs via CLI with --date and exits 0."""
     result = subprocess.run(

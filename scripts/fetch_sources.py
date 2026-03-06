@@ -125,6 +125,7 @@ async def _fetch_one_source(
 
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            resp.raise_for_status()
             raw = await resp.text()
 
         if source_id == "infidelsjazz":
@@ -145,7 +146,8 @@ async def _fetch_one_source(
 
 
 async def fetch_all_sources(target_date: date) -> str:
-    async with aiohttp.ClientSession() as session:
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ActivitiesSearcher/1.0)"}
+    async with aiohttp.ClientSession(headers=headers) as session:
         tasks = [
             _fetch_one_source(session, source_id, target_date)
             for source_id in SOURCES
