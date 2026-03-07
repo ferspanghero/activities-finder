@@ -2,11 +2,14 @@
 
 import asyncio
 import json
+import logging
 from datetime import date
 
 import aiohttp
 
 from src.models import FetchResult
+
+logger = logging.getLogger(__name__)
 
 
 SOURCES = {
@@ -85,6 +88,7 @@ async def _fetch_one_raw(
             resp.raise_for_status()
             raw = await resp.text()
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        logger.warning("Fetch failed for %s: %s", name, e)
         return FetchResult(
             source_id=source_id,
             source_name=name,
@@ -99,6 +103,7 @@ async def _fetch_one_raw(
         try:
             content = json.loads(raw)
         except json.JSONDecodeError as e:
+            logger.warning("Invalid JSON from %s: %s", name, e)
             return FetchResult(
                 source_id=source_id,
                 source_name=name,
@@ -110,6 +115,7 @@ async def _fetch_one_raw(
     else:
         content = raw
 
+    logger.debug("Fetched %s (%d bytes)", name, len(raw))
     return FetchResult(
         source_id=source_id,
         source_name=name,
@@ -122,10 +128,15 @@ async def _fetch_one_raw(
 
 async def fetch_raw_sources(target_date: date) -> list[FetchResult]:
     """Fetch all sources and return raw HTML/JSON as FetchResult objects."""
+    logger.info("Fetching %d sources for %s", len(SOURCES), target_date)
+    # Browser-like UA required — Daily Hive returns 0 events for bot-like User-Agents
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     async with aiohttp.ClientSession(headers=headers) as session:
         tasks = [
             _fetch_one_raw(session, source_id, target_date)
             for source_id in SOURCES
         ]
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+    succeeded = sum(1 for r in results if r.error is None)
+    logger.info("Fetched %d/%d sources successfully", succeeded, len(results))
+    return results

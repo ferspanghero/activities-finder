@@ -95,7 +95,7 @@ def parse_showhub(html: str, source_url: str, target_date: date) -> list[Event]:
             if not matches:
                 continue
 
-            # Parse "Artist at Venue" from link text
+            # Parse "Artist at Venue" — rsplit so "at" in event names doesn't split wrong
             link_text = link.get_text(strip=True)
             if " at " in link_text:
                 name, venue = link_text.rsplit(" at ", 1)

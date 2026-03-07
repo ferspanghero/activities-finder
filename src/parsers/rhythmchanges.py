@@ -77,7 +77,7 @@ def parse_rhythmchanges(html: str, source_url: str, target_date: date) -> list[E
             continue
 
         for li in ul.find_all("li", recursive=False):
-            # Skip struck-through (past/cancelled) entries
+            # Rhythm Changes uses <s> (strikethrough) to mark cancelled/past gigs
             if li.find("s"):
                 continue
 

@@ -1,9 +1,12 @@
 """Pipeline orchestrator: fetch -> parse -> aggregate."""
 
+import logging
 from dataclasses import dataclass, field
 from datetime import date
 
 from src.models import Event, FetchResult, SourceStatus
+
+logger = logging.getLogger(__name__)
 from src.parsers.do604 import parse_do604
 from src.parsers.dailyhive import parse_dailyhive
 from src.parsers.rhythmchanges import parse_rhythmchanges
@@ -53,10 +56,13 @@ async def run_pipeline(target_date: date) -> PipelineResult:
         try:
             events = _dispatch_parser(fr, target_date)
         except Exception as e:
+            logger.error("Parser error for %s: %s", fr.source_name, e)
             statuses.append(SourceStatus(name=fr.source_name, count=0, error=str(e)))
             continue
 
+        logger.info("Parsed %s: %d events", fr.source_name, len(events))
         all_events.extend(events)
         statuses.append(SourceStatus(name=fr.source_name, count=len(events), error=None))
 
+    logger.info("Pipeline complete: %d total events from %d sources", len(all_events), len(statuses))
     return PipelineResult(events=all_events, source_statuses=statuses)
