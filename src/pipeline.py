@@ -5,14 +5,14 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from src.models import Event, FetchResult, SourceStatus
-
-logger = logging.getLogger(__name__)
 from src.parsers.do604 import parse_do604
 from src.parsers.dailyhive import parse_dailyhive
 from src.parsers.rhythmchanges import parse_rhythmchanges
 from src.parsers.showhub import parse_showhub
 from src.parsers.infidelsjazz import parse_infidelsjazz
 from src.fetch_sources import fetch_raw_sources
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)

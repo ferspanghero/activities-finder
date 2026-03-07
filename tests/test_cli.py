@@ -26,15 +26,19 @@ def test_cli_invalid_date():
 
 
 @pytest.mark.integration
-def test_cli_runs_end_to_end():
-    """Full end-to-end run producing markdown output."""
+def test_cli_runs_end_to_end(tmp_path):
+    """Full end-to-end run producing markdown file."""
+    output_file = tmp_path / "events-test.md"
     result = subprocess.run(
-        [sys.executable, "-m", "src", "--date", "2026-03-07", "--format", "markdown"],
+        [sys.executable, "-m", "src", "--date", "2026-03-07",
+         "--format", "markdown", "--output", str(output_file)],
         capture_output=True, text=True, timeout=120,
     )
     assert result.returncode == 0
-    assert "Found" in result.stdout
-    assert "Sources checked:" in result.stdout
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert "Found" in content
+    assert "Sources checked:" in content
 
 
 @pytest.mark.integration
