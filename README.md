@@ -45,6 +45,8 @@ The pipeline can also be run directly, but deduplication is only performed throu
 python3 -m src --date 2026-03-08 --format html --output events-2026-03-08.html
 ```
 
+See [`examples/`](examples/) for sample output.
+
 ## Project Structure
 
 ```

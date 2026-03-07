@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events for Sunday, March 8, 2026</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px;background:#f8f9fa;color:#212529}
+.container{max-width:1200px;margin:0 auto}
+h1{margin:0 0 4px;font-size:1.6rem}
+.summary{color:#495057;margin:0 0 16px;font-size:1rem}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+thead{position:sticky;top:0;z-index:1}
+th{background:#343a40;color:#fff;padding:10px 12px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{background:#495057}
+.sort-arrow{font-size:.75rem;margin-left:4px}
+td{padding:8px 12px;border-bottom:1px solid #dee2e6}
+tbody tr:nth-child(even){background:#f8f9fa}
+tbody tr:hover{background:#e9ecef}
+a{color:#0d6efd;text-decoration:none}
+a:hover{text-decoration:underline}
+.footer{margin-top:16px;color:#6c757d;font-size:.875rem}
+.no-events{text-align:center;color:#6c757d;padding:40px 0;font-size:1.1rem}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Events for Sunday, March 8, 2026</h1>
+<p class="summary">Found 10 events across 3 cities from 4/5 sources</p>
+<div class="table-wrap">
+<table id="events-table">
+<thead>
+<tr>
+<th data-col="0">Event Name <span class="sort-arrow"></span></th>
+<th data-col="1">City <span class="sort-arrow"></span></th>
+<th data-col="2">Exact Address <span class="sort-arrow"></span></th>
+<th data-col="3">Time <span class="sort-arrow"></span></th>
+<th data-col="4">Source <span class="sort-arrow"></span></th>
+</tr>
+</thead>
+<tbody>
+<tr><td>2026 Vancouver Sevens Single Day Sunday</td><td>Vancouver</td><td>777 Pacific Blvd. </td><td data-sort-value="600">10:00AM</td><td><a href="https://do604.com/events/2026/3/8/2026-vancouver-sevens-single-day-sunday-tickets" target="_blank" rel="noopener noreferrer">Do604</a></td></tr>
+<tr><td>Adam Thomas</td><td>—</td><td>Riley's</td><td data-sort-value="660">11:00 AM</td><td><a href="https://showhub.ca/show/adam-thomas-at-rileys-mar-08-2026/" target="_blank" rel="noopener noreferrer">ShowHub</a></td></tr>
+<tr><td>Bite of Burnaby 2026 - March 1-31</td><td>Burnaby</td><td>Burnaby</td><td data-sort-value="780">1:00PM</td><td><a href="https://do604.com/events/2026/3/1/bite-of-burnaby-2026-march-1-31-tickets" target="_blank" rel="noopener noreferrer">Do604</a></td></tr>
+<tr><td>Laura Crema Quintet at Hero's Welcome</td><td>Vancouver</td><td>3917 Main Street</td><td data-sort-value="840">2:00 PM</td><td><a href="https://theinfidelsjazz.ca/event/laura-crema-quintet-at-heros-welcome/" target="_blank" rel="noopener noreferrer">Infidels Jazz</a></td></tr>
+<tr><td>B-Boy Chamber Music: Beatboxing, Breaking &amp; Strings</td><td>Vancouver</td><td>6265 Crescent Road, UBC</td><td data-sort-value="900">3:00PM</td><td><a href="https://do604.com/events/2026/3/8/b-boy-chamber-music-beatboxing-breaking-strings-tickets" target="_blank" rel="noopener noreferrer">Do604</a></td></tr>
+<tr><td>Standing Wave</td><td>—</td><td>Kay Meek Centre</td><td data-sort-value="900">3:00 PM</td><td><a href="https://rhythmchanges.ca/gigs/" target="_blank" rel="noopener noreferrer">Rhythm Changes</a></td></tr>
+<tr><td>37th Annual Festival du Bois</td><td>Coquitlam</td><td>1046 Brunette Avenue</td><td data-sort-value="1140">7:00PM</td><td><a href="https://do604.com/events/2026/3/6/37th-annual-festival-du-bois-tickets" target="_blank" rel="noopener noreferrer">Do604</a></td></tr>
+<tr><td>Simon Yoo Quintet</td><td>—</td><td>Aperture Coffee Bar Main Street</td><td data-sort-value="1140">7:00 PM</td><td><a href="https://rhythmchanges.ca/gigs/" target="_blank" rel="noopener noreferrer">Rhythm Changes</a></td></tr>
+<tr><td>Clara Lin Trio at Meo's Chinatown</td><td>Vancouver</td><td>265 East Pender Street</td><td data-sort-value="1140">7:00 PM</td><td><a href="https://theinfidelsjazz.ca/event/clara-lin-trio-at-meos-chinatown/" target="_blank" rel="noopener noreferrer">Infidels Jazz</a></td></tr>
+<tr><td>Tambura Rasa</td><td>Vancouver</td><td>1 Alexander St</td><td data-sort-value="1260">9:00PM</td><td><a href="https://do604.com/events/2026/3/8/tambura-rasa-tickets" target="_blank" rel="noopener noreferrer">Do604</a></td></tr>
+</tbody>
+</table>
+</div>
+<p class="footer">Sources checked: Do604 (5), Daily Hive (0), Rhythm Changes (2), ShowHub (1), Infidels Jazz (2)</p>
+</div>
+<script>
+(function(){
+  const table=document.getElementById("events-table");
+  if(!table)return;
+  const headers=table.querySelectorAll("th");
+  let sortCol=-1,sortAsc=true;
+  headers.forEach(th=>{
+    th.addEventListener("click",()=>{
+      const col=parseInt(th.dataset.col);
+      if(sortCol===col){sortAsc=!sortAsc}else{sortCol=col;sortAsc=true}
+      const tbody=table.querySelector("tbody");
+      const rows=Array.from(tbody.querySelectorAll("tr"));
+      rows.sort((a,b)=>{
+        let av,bv;
+        if(col===3){
+          av=parseInt(a.children[col].dataset.sortValue)||0;
+          bv=parseInt(b.children[col].dataset.sortValue)||0;
+        }else{
+          av=a.children[col].textContent.trim().toLowerCase();
+          bv=b.children[col].textContent.trim().toLowerCase();
+        }
+        if(av<bv)return sortAsc?-1:1;
+        if(av>bv)return sortAsc?1:-1;
+        return 0;
+      });
+      rows.forEach(r=>tbody.appendChild(r));
+      headers.forEach(h=>h.querySelector(".sort-arrow").textContent="");
+      th.querySelector(".sort-arrow").textContent=sortAsc?"\u25b2":"\u25bc";
+    });
+  });
+})();
+</script>
+</body>
+</html>
