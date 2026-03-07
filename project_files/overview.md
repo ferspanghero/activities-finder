@@ -4,13 +4,17 @@
 
 An automated tool that aggregates event listings from curated Metro Vancouver sources, filters them by date, city, and activity type, and presents a consolidated list of things to do.
 
-## How It Works
+## How It Works (v3 — Deterministic Pipeline)
 
 1. User runs `/find-activities` with optional date, city, and activity type filters
-2. Python script (`scripts/fetch_sources.py`) fetches all sources in parallel, converts HTML to markdown
-3. Claude parses the raw output, extracts individual events, filters by city/type
-4. Results are presented as a markdown table in conversation
-5. Results are also exported to `events-YYYY-MM-DD.html` — a self-contained HTML file with sortable columns and clickable links
+2. Pipeline fetches all sources in parallel, returning raw HTML/JSON
+3. Source-specific BeautifulSoup parsers extract structured `Event` objects deterministically
+4. Renderers produce markdown table (in conversation) and HTML report (exported file)
+5. LLM role is limited to: parsing user parameters from natural language + optional activity type classification
+
+```
+fetch HTML/JSON → source-specific parsers → list[Event] → renderers → output
+```
 
 ## Key Concepts
 

@@ -1,0 +1,230 @@
+{
+  "events": [
+    {
+      "id": 3732,
+      "global_id": "theinfidelsjazz.ca?id=3732",
+      "global_id_lineage": [
+        "theinfidelsjazz.ca?id=3732"
+      ],
+      "author": "4",
+      "status": "publish",
+      "date": "2026-02-05 15:11:23",
+      "date_utc": "2026-02-05 23:11:23",
+      "modified": "2026-02-05 15:22:11",
+      "modified_utc": "2026-02-05 23:22:11",
+      "url": "https://theinfidelsjazz.ca/event/adam-robert-thomas-trio-at-frankies-after-dark/",
+      "rest_url": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/3732",
+      "title": "Adam Robert Thomas Trio at Frankie&#8217;s After Dark",
+      "description": "<div class=\"xdj266r x14z9mp xat24cr x1lziwak x1vvkbs\"><strong>This will be an evening featuring the vocals of JUNO Nominated performer and producer, Adam Robert Thomas.</strong></div>\n<div></div>\n<div class=\"xdj266r x14z9mp xat24cr x1lziwak x1vvkbs\">The set will be a selection of favourites from past performances, including his tributes to Chet Baker and Ray Charles, along with some fresh additions. An improptu evening featuring the musicality, interplay and deep time feels of three of Vancouver\u2019s finest jazz musicians.</div>\n<div></div>\n<div class=\"x14z9mp xat24cr x1lziwak x1vvkbs xtlvy1s\">Adam Robert Thomas &#8211; vocals and guitar<br class=\"html-br\" />Conrad Good &#8211; upright bass<br class=\"html-br\" />Jesse Cahill &#8211; drum set</div>\n<div></div>\n<div class=\"x14z9mp xat24cr x1lziwak x1vvkbs xtlvy1s\">Frankie&#8217;s After Dark takes place every Friday &amp; Saturday night at Frankie&#8217;s Jazz Club (755 Beatty) at 11PM. Tickets are $10 and are added to your bill at the end of the night. This series is curated &amp; presented by Infidels Jazz.</div>",
+      "excerpt": "",
+      "slug": "adam-robert-thomas-trio-at-frankies-after-dark",
+      "image": {
+        "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio.png",
+        "id": 3724,
+        "extension": "png",
+        "width": 1080,
+        "height": 1350,
+        "filesize": 685701,
+        "sizes": {
+          "medium": {
+            "width": 240,
+            "height": 300,
+            "mime-type": "image/png",
+            "filesize": 67338,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-240x300.png"
+          },
+          "large": {
+            "width": 819,
+            "height": 1024,
+            "mime-type": "image/png",
+            "filesize": 464838,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-819x1024.png"
+          },
+          "thumbnail": {
+            "width": 150,
+            "height": 150,
+            "mime-type": "image/png",
+            "filesize": 26112,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-150x150.png"
+          },
+          "medium_large": {
+            "width": 768,
+            "height": 960,
+            "mime-type": "image/png",
+            "filesize": 420208,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-768x960.png"
+          },
+          "et-pb-post-main-image": {
+            "width": 400,
+            "height": 250,
+            "mime-type": "image/png",
+            "filesize": 69385,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-400x250.png"
+          },
+          "et-pb-post-main-image-fullwidth": {
+            "width": 1080,
+            "height": 675,
+            "mime-type": "image/png",
+            "filesize": 329050,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-1080x675.png"
+          },
+          "et-pb-portfolio-image": {
+            "width": 400,
+            "height": 284,
+            "mime-type": "image/png",
+            "filesize": 80111,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-400x284.png"
+          },
+          "et-pb-portfolio-module-image": {
+            "width": 510,
+            "height": 382,
+            "mime-type": "image/png",
+            "filesize": 124195,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-510x382.png"
+          },
+          "et-pb-gallery-module-image-portrait": {
+            "width": 400,
+            "height": 516,
+            "mime-type": "image/png",
+            "filesize": 156110,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-400x516.png"
+          },
+          "et-pb-image--responsive--tablet": {
+            "width": 980,
+            "height": 1225,
+            "mime-type": "image/png",
+            "filesize": 615168,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-980x1225.png"
+          },
+          "et-pb-image--responsive--phone": {
+            "width": 480,
+            "height": 600,
+            "mime-type": "image/png",
+            "filesize": 200602,
+            "url": "https://theinfidelsjazz.ca/wp-content/uploads/2026/02/20260307-Frankies-AdamRobertThomasTrio-480x600.png"
+          }
+        }
+      },
+      "all_day": false,
+      "start_date": "2026-03-07 23:00:00",
+      "start_date_details": {
+        "year": "2026",
+        "month": "03",
+        "day": "07",
+        "hour": "23",
+        "minutes": "00",
+        "seconds": "00"
+      },
+      "end_date": "2026-03-08 00:15:00",
+      "end_date_details": {
+        "year": "2026",
+        "month": "03",
+        "day": "08",
+        "hour": "00",
+        "minutes": "15",
+        "seconds": "00"
+      },
+      "utc_start_date": "2026-03-08 07:00:00",
+      "utc_start_date_details": {
+        "year": "2026",
+        "month": "03",
+        "day": "08",
+        "hour": "07",
+        "minutes": "00",
+        "seconds": "00"
+      },
+      "utc_end_date": "2026-03-08 08:15:00",
+      "utc_end_date_details": {
+        "year": "2026",
+        "month": "03",
+        "day": "08",
+        "hour": "08",
+        "minutes": "15",
+        "seconds": "00"
+      },
+      "timezone": "America/Vancouver",
+      "timezone_abbr": "PST",
+      "cost": "$10",
+      "cost_details": {
+        "currency_symbol": "$",
+        "currency_code": "CAD",
+        "currency_position": "prefix",
+        "values": [
+          "10"
+        ]
+      },
+      "website": "https://www.facebook.com/events/890776076881474/?rdid=7IpZsGGFZ8WLLtXb&amp;share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1BJuC1aw7g%2F",
+      "show_map": true,
+      "show_map_link": true,
+      "hide_from_listings": false,
+      "sticky": false,
+      "featured": false,
+      "categories": [
+        {
+          "name": "Concert",
+          "slug": "concert",
+          "term_group": 0,
+          "term_taxonomy_id": 18,
+          "taxonomy": "tribe_events_cat",
+          "description": "",
+          "parent": 0,
+          "count": 692,
+          "filter": "raw",
+          "id": 18,
+          "urls": {
+            "self": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/categories/18",
+            "collection": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/categories"
+          }
+        }
+      ],
+      "tags": [],
+      "venue": {
+        "id": 287,
+        "author": "2",
+        "status": "publish",
+        "date": "2023-03-29 05:10:23",
+        "date_utc": "2023-03-29 05:10:23",
+        "modified": "2023-03-29 05:10:23",
+        "modified_utc": "2023-03-29 05:10:23",
+        "url": "https://theinfidelsjazz.ca/venue/frankies-jazz-club/",
+        "venue": "Frankie\u2019s Jazz Club",
+        "slug": "frankies-jazz-club",
+        "address": "755 Beatty St",
+        "city": "Vancouver",
+        "country": "Canada",
+        "province": "British Columbia",
+        "zip": "V6B 2M4",
+        "website": "https://www.frankiesjazzclub.ca/",
+        "stateprovince": "British Columbia",
+        "show_map": true,
+        "show_map_link": true,
+        "global_id": "theinfidelsjazz.ca?id=287",
+        "global_id_lineage": [
+          "theinfidelsjazz.ca?id=287"
+        ]
+      },
+      "organizer": [
+        {
+          "id": 288,
+          "author": "2",
+          "status": "publish",
+          "date": "2023-03-29 05:10:23",
+          "date_utc": "2023-03-29 05:10:23",
+          "modified": "2023-03-29 05:10:23",
+          "modified_utc": "2023-03-29 05:10:23",
+          "url": "https://theinfidelsjazz.ca/organizer/the-infidels-jazz/",
+          "organizer": "The Infidels Jazz",
+          "slug": "the-infidels-jazz",
+          "global_id": "theinfidelsjazz.ca?id=288",
+          "global_id_lineage": [
+            "theinfidelsjazz.ca?id=288"
+          ]
+        }
+      ],
+      "custom_fields": []
+    }
+  ],
+  "rest_url": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?page=1&per_page=10&start_date=2026-03-07 02:00:00&end_date=2026-03-08 01:59:59&status=publish",
+  "total": 1,
+  "total_pages": 1
+}

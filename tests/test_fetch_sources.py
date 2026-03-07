@@ -1,19 +1,19 @@
-"""Tests for scripts/fetch_sources.py"""
+"""Tests for src/fetch_sources.py"""
 
 import json
 from datetime import date
 
+import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-from scripts.fetch_sources import (
+from src.fetch_sources import (
     build_source_url,
     calculate_week_number,
-    fetch_all_sources,
-    format_source_output,
-    format_infidelsjazz_json,
+    fetch_raw_sources,
     SOURCES,
 )
+from src.models import FetchResult
 
 
 def test_build_url_do604():
@@ -74,58 +74,7 @@ def test_week_number_week5():
     assert calculate_week_number(date(2026, 3, 31)) == 5
 
 
-# --- Output formatting ---
-
-def test_format_source_output_success():
-    output = format_source_output("Do604", "https://do604.com/events/2026/03/07", "# Events\n- Jazz Night")
-    assert output.startswith("=== SOURCE: Do604 (https://do604.com/events/2026/03/07) ===")
-    assert "# Events\n- Jazz Night" in output
-
-
-def test_format_source_output_error():
-    output = format_source_output("Do604", "https://do604.com/events/2026/03/07", None, error="Connection timeout")
-    assert "=== SOURCE: Do604 (ERROR: Connection timeout) ===" in output
-
-
-def test_format_source_output_rhythmchanges_includes_week():
-    output = format_source_output(
-        "Rhythm Changes", "https://rhythmchanges.ca/gigs/", "some content",
-        week_hint="Target date falls in Week 1 (Sun Mar 1 - Sat Mar 7)"
-    )
-    assert "Target date falls in Week 1" in output
-
-
-# --- Infidels Jazz JSON formatting ---
-
-SAMPLE_INFIDELS_JSON = {
-    "events": [
-        {
-            "title": "Adam Robert Thomas Trio",
-            "venue": {"venue": "Frankie's Jazz Club", "address": "755 Beatty Street", "city": "Vancouver"},
-            "start_date": "2026-03-07 23:00:00",
-            "end_date": "2026-03-08 00:15:00",
-            "cost": "$10",
-            "url": "https://theinfidelsjazz.ca/event/adam-robert-thomas-trio/",
-        }
-    ]
-}
-
-
-def test_format_infidelsjazz_json():
-    result = format_infidelsjazz_json(SAMPLE_INFIDELS_JSON)
-    assert "Adam Robert Thomas Trio" in result
-    assert "Frankie's Jazz Club" in result
-    assert "755 Beatty Street" in result
-    assert "Vancouver" in result
-    assert "$10" in result
-
-
-def test_format_infidelsjazz_json_empty():
-    result = format_infidelsjazz_json({"events": []})
-    assert "no events" in result.lower()
-
-
-# --- Mocked HTTP tests ---
+# --- fetch_raw_sources tests ---
 
 SAMPLE_HTML = "<html><body><h1>Events</h1><p>Jazz Night at 8pm</p></body></html>"
 SAMPLE_INFIDELS_API_RESPONSE = json.dumps({
@@ -142,8 +91,7 @@ SAMPLE_INFIDELS_API_RESPONSE = json.dumps({
 
 
 @pytest.mark.asyncio
-async def test_fetch_all_sources_success():
-    """All 5 sources return content — output has 5 sections."""
+async def test_fetch_raw_sources_returns_fetch_results():
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
         for source_id in SOURCES:
@@ -153,87 +101,70 @@ async def test_fetch_all_sources_success():
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        result = await fetch_all_sources(target)
+        results = await fetch_raw_sources(target)
 
-    assert result.count("=== SOURCE:") == 5
-    for source in SOURCES.values():
-        assert source["name"] in result
-    assert "ERROR" not in result
+    assert len(results) == 5
+    assert all(isinstance(r, FetchResult) for r in results)
+    assert all(r.error is None for r in results)
 
 
 @pytest.mark.asyncio
-async def test_fetch_partial_failure():
-    """1 source fails — output has 4 content sections + 1 error section."""
+async def test_fetch_raw_sources_returns_raw_html():
+    """HTML sources should return raw HTML, not markdown."""
+    target = date(2026, 3, 7)
+    with aioresponses() as mocked:
+        for source_id in SOURCES:
+            url = build_source_url(source_id, target)
+            if source_id == "infidelsjazz":
+                mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
+            else:
+                mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
+
+        results = await fetch_raw_sources(target)
+
+    do604 = next(r for r in results if r.source_id == "do604")
+    assert isinstance(do604.content, str)
+    assert "<html>" in do604.content  # Raw HTML, not markdown
+
+
+@pytest.mark.asyncio
+async def test_fetch_raw_sources_returns_parsed_json():
+    """Infidels Jazz should return parsed dict, not raw string."""
+    target = date(2026, 3, 7)
+    with aioresponses() as mocked:
+        for source_id in SOURCES:
+            url = build_source_url(source_id, target)
+            if source_id == "infidelsjazz":
+                mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
+            else:
+                mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
+
+        results = await fetch_raw_sources(target)
+
+    infidels = next(r for r in results if r.source_id == "infidelsjazz")
+    assert isinstance(infidels.content, dict)
+    assert "events" in infidels.content
+
+
+@pytest.mark.asyncio
+async def test_fetch_raw_sources_handles_errors():
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
         for source_id in SOURCES:
             url = build_source_url(source_id, target)
             if source_id == "do604":
-                mocked.get(url, exception=Exception("Connection timeout"))
+                mocked.get(url, exception=aiohttp.ClientConnectionError("Connection timeout"))
             elif source_id == "infidelsjazz":
                 mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        result = await fetch_all_sources(target)
+        results = await fetch_raw_sources(target)
 
-    assert result.count("=== SOURCE:") == 5
-    assert "Do604 (ERROR:" in result
-    assert result.count("ERROR") == 1
-
-
-@pytest.mark.asyncio
-async def test_fetch_all_sources_down():
-    """All sources fail — output has 5 error sections."""
-    target = date(2026, 3, 7)
-    with aioresponses() as mocked:
-        for source_id in SOURCES:
-            url = build_source_url(source_id, target)
-            mocked.get(url, exception=Exception("Connection refused"))
-
-        result = await fetch_all_sources(target)
-
-    assert result.count("=== SOURCE:") == 5
-    assert result.count("ERROR") == 5
-
-
-# --- CLI tests ---
-
-import subprocess
-import sys
-
-
-@pytest.mark.integration
-def test_cli_runs_with_date_arg():
-    """Script runs via CLI with --date and exits 0."""
-    result = subprocess.run(
-        [sys.executable, "-m", "scripts.fetch_sources", "--date", "2026-03-07"],
-        capture_output=True, text=True, timeout=60,
-    )
-    assert result.returncode == 0
-    assert "=== SOURCE:" in result.stdout
-
-
-def test_cli_missing_date_arg():
-    """Script fails with clear error when --date is missing."""
-    result = subprocess.run(
-        [sys.executable, "-m", "scripts.fetch_sources"],
-        capture_output=True, text=True, timeout=10,
-    )
-    assert result.returncode != 0
-
-
-# --- Integration test ---
-
-@pytest.mark.integration
-def test_integration_real_sources():
-    """End-to-end: fetch real sources for a known date."""
-    result = subprocess.run(
-        [sys.executable, "-m", "scripts.fetch_sources", "--date", "2026-03-07"],
-        capture_output=True, text=True, timeout=120,
-    )
-    assert result.returncode == 0
-    output = result.stdout
-    # All 5 sources should appear
-    for name in ["Do604", "Daily Hive", "Rhythm Changes", "ShowHub", "Infidels Jazz"]:
-        assert f"=== SOURCE: {name}" in output, f"Missing source: {name}"
+    assert len(results) == 5
+    do604 = next(r for r in results if r.source_id == "do604")
+    assert do604.error is not None
+    assert do604.content is None
+    # Other sources should succeed
+    others = [r for r in results if r.source_id != "do604"]
+    assert all(r.error is None for r in others)
