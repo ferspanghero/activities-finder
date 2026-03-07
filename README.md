@@ -1,16 +1,16 @@
 # Activities Searcher
 
-An automated tool that aggregates event listings from curated Metro Vancouver sources, filters them by date, city, and activity type, and presents a consolidated list of things to do.
+An automated tool that aggregates event listings from curated sources, filters them by date, city, and activity type, and presents a consolidated list of things to do. Currently configured with Metro Vancouver sources, but extensible to any region by adding new parsers.
 
 ## How It Works
 
 1. Pipeline fetches all sources in parallel, returning raw HTML/JSON
 2. Source-specific BeautifulSoup parsers extract structured `Event` objects deterministically
 3. Renderer produces output file (markdown or HTML with sortable columns)
-4. Optional: Claude Code slash command deduplicates the event table before presenting results
+4. The `/find-activities` slash command deduplicates cross-source duplicates (same event listed by multiple sources) and presents the cleaned results
 
 ```
-fetch HTML/JSON → source-specific parsers → list[Event] → renderers → output file
+fetch HTML/JSON → source-specific parsers → list[Event] → renderers → output file → dedup
 ```
 
 ## Sources
@@ -31,23 +31,7 @@ Live music, festivals, sports events, art exhibitions/gallery openings, food/dri
 
 ## Usage
 
-### CLI
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run for a specific date (default: today)
-python3 -m src --date 2026-03-08
-
-# Output as HTML (default) or markdown
-python3 -m src --date 2026-03-08 --format html --output events-2026-03-08.html
-python3 -m src --date 2026-03-08 --format markdown --output events-2026-03-08.md
-```
-
-### Claude Code Slash Command
-
-If using [Claude Code](https://docs.anthropic.com/en/docs/claude-code), the `/find-activities` slash command runs the pipeline, deduplicates results, and presents them interactively:
+Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Run the `/find-activities` slash command:
 
 ```
 /find-activities march 8th html
@@ -55,9 +39,11 @@ If using [Claude Code](https://docs.anthropic.com/en/docs/claude-code), the `/fi
 /find-activities live music this weekend
 ```
 
-## Default City List
+The pipeline can also be run directly, but deduplication is only performed through the slash command:
 
-Vancouver, Burnaby, New Westminster, Richmond, North Vancouver (City), Lynn Valley, Deep Cove, West Vancouver, Horseshoe Bay, Surrey, White Rock, Port Moody, Port Coquitlam, Coquitlam, Langley (City), Langley (Township), Delta, Pitt Meadows, Maple Ridge, Mission, Abbotsford, Chilliwack, Squamish, Anmore, Belcarra
+```bash
+python3 -m src --date 2026-03-08 --format html --output events-2026-03-08.html
+```
 
 ## Project Structure
 
