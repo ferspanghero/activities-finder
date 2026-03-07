@@ -2,7 +2,7 @@
 
 An automated tool that aggregates event listings from curated Metro Vancouver sources, filters by date/city/activity type, and presents a consolidated table.
 
-Read `project_files/overview.md` for full project description and architecture.
+Read `README.md` for full project description and architecture.
 
 ## Project Structure
 
