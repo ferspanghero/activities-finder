@@ -40,3 +40,14 @@ def test_render_html_has_table(sample_events, sample_statuses):
 def test_render_html_empty_events(sample_statuses):
     html = render_html([], sample_statuses, "2026-03-07")
     assert "No events found" in html
+
+
+def test_render_html_address_has_maps_link(sample_events, sample_statuses):
+    html = render_html(sample_events, sample_statuses, "2026-03-07")
+    assert '<a href="https://www.google.com/maps/search/?api=1&amp;query=732%20Main%20St" target="_blank" rel="noopener noreferrer">732 Main St</a>' in html
+
+
+def test_render_html_none_address_no_maps_link(sample_events, sample_statuses):
+    html = render_html(sample_events, sample_statuses, "2026-03-07")
+    assert "\u2014</td>" in html
+    assert "Rock Show" in html

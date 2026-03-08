@@ -1,6 +1,7 @@
 """Markdown table renderer for Event objects."""
 
 from src.models import Event, SourceStatus
+from src.renderers.maps import build_maps_url
 
 
 def _em_dash(value: str | None) -> str:
@@ -23,7 +24,8 @@ def render_markdown(events: list[Event], source_statuses: list[SourceStatus], da
     for e in events:
         name = _em_dash(e.name)
         city = _em_dash(e.city)
-        address = _em_dash(e.address)
+        maps_url = build_maps_url(e.address)
+        address = f"[{e.address}]({maps_url})" if maps_url else _em_dash(e.address)
         time = _em_dash(e.time)
         link = f"[{e.source_name}]({e.source_url})" if e.source_url else e.source_name
         lines.append(f"| {name} | {city} | {address} | {time} | {link} |")

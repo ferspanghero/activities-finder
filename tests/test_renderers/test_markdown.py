@@ -47,3 +47,15 @@ def test_render_source_links(sample_events, sample_statuses):
     md = render_markdown(sample_events, sample_statuses, "2026-03-07")
     assert "https://do604.com/events/jazz" in md
     assert "https://showhub.ca/show/rock" in md
+
+
+def test_render_address_has_maps_link(sample_events, sample_statuses):
+    md = render_markdown(sample_events, sample_statuses, "2026-03-07")
+    assert "[732 Main St](https://www.google.com/maps/search/" in md
+
+
+def test_render_none_address_no_maps_link(sample_events, sample_statuses):
+    md = render_markdown(sample_events, sample_statuses, "2026-03-07")
+    lines = md.split("\n")
+    rock_show_line = [l for l in lines if "Rock Show" in l][0]
+    assert "google.com/maps" not in rock_show_line

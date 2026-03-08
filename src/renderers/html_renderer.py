@@ -5,6 +5,7 @@ import re
 from datetime import date
 
 from src.models import Event, SourceStatus
+from src.renderers.maps import build_maps_url
 
 
 _CSS = """\
@@ -100,11 +101,18 @@ def build_event_row(event: Event) -> str:
     source_name = html_lib.escape(event.source_name, quote=True)
     source_url = html_lib.escape(event.source_url, quote=True)
 
+    maps_url = build_maps_url(event.address)
+    if maps_url:
+        maps_url_escaped = html_lib.escape(maps_url, quote=True)
+        address_cell = f'<a href="{maps_url_escaped}" target="_blank" rel="noopener noreferrer">{address}</a>'
+    else:
+        address_cell = address
+
     return (
         f"<tr>"
         f"<td>{name}</td>"
         f"<td>{city}</td>"
-        f"<td>{address}</td>"
+        f"<td>{address_cell}</td>"
         f'<td data-sort-value="{sort_value}">{time}</td>'
         f'<td><a href="{source_url}" target="_blank" rel="noopener noreferrer">{source_name}</a></td>'
         f"</tr>"
