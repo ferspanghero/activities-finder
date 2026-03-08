@@ -27,7 +27,7 @@
 
 ## Manual QA
 
-- [ ] **T17**: Run `generate_html.py` with sample JSON, open HTML in browser, verify table renders
-- [ ] **T18**: Verify column sorting works (all columns, asc/desc toggle)
-- [ ] **T19**: Verify source links open in new tabs
-- [ ] **T20**: Run `/find-activities` end-to-end, verify both markdown and HTML output
+- [x] **T17**: Run `generate_html.py` with sample JSON, open HTML in browser, verify table renders
+- [x] **T18**: Verify column sorting works (all columns, asc/desc toggle)
+- [x] **T19**: Verify source links open in new tabs
+- [x] **T20**: Run `/find-activities` end-to-end, verify both markdown and HTML output

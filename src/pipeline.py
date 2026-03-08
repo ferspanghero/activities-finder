@@ -10,6 +10,7 @@ from src.parsers.dailyhive import parse_dailyhive
 from src.parsers.rhythmchanges import parse_rhythmchanges
 from src.parsers.showhub import parse_showhub
 from src.parsers.infidelsjazz import parse_infidelsjazz
+from src.parsers.bcaletrail import parse_bcaletrail
 from src.fetch_sources import fetch_raw_sources
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,8 @@ def _dispatch_parser(fetch_result: FetchResult, target_date: date) -> list[Event
         return parse_showhub(content, url, target_date)
     elif sid == "infidelsjazz":
         return parse_infidelsjazz(content, url)
+    elif sid == "bcaletrail":
+        return parse_bcaletrail(content, url, target_date)
     else:
         return []
 

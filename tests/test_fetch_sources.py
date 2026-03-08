@@ -41,6 +41,11 @@ def test_build_url_infidelsjazz():
     assert url == "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date=2026-03-07&end_date=2026-03-07"
 
 
+def test_build_url_bcaletrail():
+    url = build_source_url("bcaletrail", date(2026, 3, 7))
+    assert url == "https://bcaletrail.ca/events/?date-start=2026-03-07&date-end=2026-03-07"
+
+
 def test_build_url_different_date():
     url = build_source_url("do604", date(2026, 2, 28))
     assert url == "https://do604.com/events/2026/02/28"
@@ -103,7 +108,7 @@ async def test_fetch_raw_sources_returns_fetch_results():
 
         results = await fetch_raw_sources(target)
 
-    assert len(results) == 5
+    assert len(results) == len(SOURCES)
     assert all(isinstance(r, FetchResult) for r in results)
     assert all(r.error is None for r in results)
 
@@ -161,7 +166,7 @@ async def test_fetch_raw_sources_handles_errors():
 
         results = await fetch_raw_sources(target)
 
-    assert len(results) == 5
+    assert len(results) == len(SOURCES)
     do604 = next(r for r in results if r.source_id == "do604")
     assert do604.error is not None
     assert do604.content is None

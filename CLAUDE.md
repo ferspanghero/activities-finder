@@ -15,7 +15,7 @@ Read `README.md` for full project description and architecture.
 
 - `src/models.py` — `Event`, `FetchResult`, `SourceStatus` dataclasses
 - `src/pipeline.py` — orchestrator: fetch → parse → aggregate
-- `src/parsers/` — source-specific parsers (do604, dailyhive, rhythmchanges, showhub, infidelsjazz)
+- `src/parsers/` — source-specific parsers (do604, dailyhive, rhythmchanges, showhub, infidelsjazz, bcaletrail)
 - `src/renderers/` — markdown and HTML renderers
 - `src/fetch_sources.py` — async parallel fetcher (raw HTML/JSON)
 - `src/__main__.py` — CLI entry point for `python3 -m src`
@@ -95,6 +95,14 @@ Curated sources fetched and parsed by the `src/` pipeline. No broad web search.
 - **URL pattern:** `https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date={date}&end_date={date}`
 - **Date in URL:** Yes — returns only events on the target date
 - **Fields:** Event name, venue, city, address, time, ticket price, description, event URL
+
+### Source 6: BC Ale Trail
+- **Type:** Brewery events aggregator (BC-wide)
+- **Strategy:** Parse `data-event-times` JSON embedded in HTML event cards
+- **URL pattern:** `https://bcaletrail.ca/events/?date-start={date}&date-end={date}`
+- **Date in URL:** Yes — server-side date filtering. Parser also filters by target date from embedded JSON timestamps.
+- **Fields:** Event name, venue, city, address, time
+- **Note:** Events span all of BC, not just Metro Vancouver. City data comes from embedded JSON.
 
 ## Behavior Rules
 

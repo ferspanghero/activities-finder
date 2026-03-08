@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from src.fetch_sources import SOURCES
 from src.models import Event, FetchResult, SourceStatus
 from src.pipeline import run_pipeline, PipelineResult
 
@@ -46,6 +47,7 @@ MOCK_FETCH_RESULTS = [
     _make_fetch_result("rhythmchanges", "Rhythm Changes", content="<html><body></body></html>"),
     _make_fetch_result("showhub", "ShowHub", content="<html><body></body></html>"),
     _make_fetch_result("infidelsjazz", "Infidels Jazz", content=INFIDELS_JSON),
+    _make_fetch_result("bcaletrail", "BC Ale Trail", content="<html><body></body></html>"),
 ]
 
 
@@ -67,10 +69,29 @@ async def test_run_pipeline_extracts_events():
 
 
 @pytest.mark.asyncio
+async def test_run_pipeline_preserves_event_fields():
+    """Verify cities, addresses, and times survive the pipeline."""
+    with patch("src.pipeline.fetch_raw_sources", new_callable=AsyncMock, return_value=MOCK_FETCH_RESULTS):
+        result = await run_pipeline(date(2026, 3, 7))
+    rock = next(e for e in result.events if e.name == "Rock Show")
+    assert rock.city == "Vancouver"
+    assert rock.address == "99 Oak St"
+    assert rock.time == "9:00PM"
+    assert rock.source_name == "Do604"
+
+    jazz = next(e for e in result.events if e.name == "Jazz Trio")
+    assert jazz.city == "Vancouver"
+    assert jazz.address == "1 Main St"
+    assert jazz.time == "8:00 PM"
+    assert jazz.source_name == "Infidels Jazz"
+    assert jazz.source_url == "https://theinfidelsjazz.ca/event/trio/"
+
+
+@pytest.mark.asyncio
 async def test_run_pipeline_reports_source_statuses():
     with patch("src.pipeline.fetch_raw_sources", new_callable=AsyncMock, return_value=MOCK_FETCH_RESULTS):
         result = await run_pipeline(date(2026, 3, 7))
-    assert len(result.source_statuses) == 5
+    assert len(result.source_statuses) == len(SOURCES)
     do604_status = next(s for s in result.source_statuses if s.name == "Do604")
     assert do604_status.count == 1
     assert do604_status.error is None

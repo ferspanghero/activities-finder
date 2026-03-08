@@ -33,6 +33,10 @@ SOURCES = {
         "name": "Infidels Jazz",
         "url_template": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date={date}&end_date={date}",
     },
+    "bcaletrail": {
+        "name": "BC Ale Trail",
+        "url_template": "https://bcaletrail.ca/events/?date-start={date}&date-end={date}",
+    },
 }
 
 

@@ -9,7 +9,7 @@ from src.models import Event
 def _format_time(start_date_str: str) -> str:
     """Convert '2026-03-07 23:00:00' to '11:00 PM'."""
     dt = datetime.strptime(start_date_str, "%Y-%m-%d %H:%M:%S")
-    return dt.strftime("%-I:%M %p")
+    return dt.strftime("%I:%M %p").lstrip("0")
 
 
 def parse_infidelsjazz(data: dict, source_url: str) -> list[Event]:

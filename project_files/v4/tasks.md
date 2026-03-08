@@ -21,4 +21,4 @@
 
 - [x] **V1**: All tests pass (`pytest`)
 - [x] **V2**: CLI works without dedup flags
-- [ ] **V3**: `/find-activities` slash command deduplicates results
+- [x] **V3**: `/find-activities` slash command deduplicates results

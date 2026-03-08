@@ -8,98 +8,81 @@ from src.parsers.dailyhive import parse_dailyhive
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "dailyhive_sample.html"
+TARGET_DATE = date(2026, 3, 7)
+SOURCE_URL = "https://dailyhive.com/vancouver/listed/events"
 
 
 def _load_fixture() -> str:
     return FIXTURE.read_text()
 
 
+def _parse_fixture(target_date: date = TARGET_DATE) -> list[Event]:
+    return parse_dailyhive(_load_fixture(), SOURCE_URL, target_date)
+
+
 def test_parse_returns_list_of_events():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
+    events = _parse_fixture()
     assert isinstance(events, list)
     assert all(isinstance(e, Event) for e in events)
 
 
-def test_parse_finds_events():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
-    assert len(events) > 0
+def test_parse_finds_all_events():
+    events = _parse_fixture()
+    assert len(events) == 6
 
 
 def test_parse_extracts_event_name():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
+    events = _parse_fixture()
     names = [e.name for e in events]
-    assert any(name for name in names if len(name) > 0)
+    assert "I Saw You" in names
+    assert "VIMFF 2026" in names
+    assert "Blockbuster" in names
 
 
 def test_parse_extracts_city():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
-    cities = [e.city for e in events if e.city]
-    assert len(cities) > 0
+    events = _parse_fixture()
+    ev = next(e for e in events if e.name == "I Saw You")
+    assert ev.city == "Vancouver"
 
 
 def test_parse_extracts_address():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
-    addresses = [e.address for e in events if e.address]
-    assert len(addresses) > 0
+    events = _parse_fixture()
+    ev = next(e for e in events if e.name == "I Saw You")
+    assert ev.address == "1502 Duranleau Street"
+
+
+def test_parse_extracts_source_url():
+    events = _parse_fixture()
+    ev = next(e for e in events if e.name == "VIMFF 2026")
+    assert ev.source_url == "https://tickets.vimff.org/dailyhive-calendar"
 
 
 def test_parse_source_name():
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
+    events = _parse_fixture()
     assert all(e.source_name == "Daily Hive" for e in events)
 
 
 def test_parse_filters_by_target_date():
     """Events that don't span the target date should be excluded."""
-    # The fixture contains multi-day events; all returned should span Mar 7
-    events = parse_dailyhive(
-        _load_fixture(),
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
-    # All events should be within their date range covering March 7
-    assert len(events) > 0
+    events_mar7 = _parse_fixture(date(2026, 3, 7))
+    events_apr1 = _parse_fixture(date(2026, 4, 1))
+    assert len(events_mar7) == 6
+    assert len(events_apr1) == 2
+    # Gathered Vintage is Mar 7 only — should not appear on Apr 1
+    apr1_names = [e.name for e in events_apr1]
+    assert not any("Gathered Vintage" in n for n in apr1_names)
 
 
 def test_parse_empty_html():
     events = parse_dailyhive(
-        "<html><body></body></html>",
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
+        "<html><body></body></html>", SOURCE_URL, TARGET_DATE,
     )
     assert events == []
 
 
 def test_parse_no_next_data():
     html = "<html><body><p>No data</p></body></html>"
-    events = parse_dailyhive(
-        html,
-        "https://dailyhive.com/vancouver/listed/events",
-        date(2026, 3, 7),
-    )
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE)
     assert events == []
 
 
@@ -131,7 +114,7 @@ def test_parse_inline_json_events():
     ]}}}
     </script>
     </body></html>"""
-    events = parse_dailyhive(html, "https://dailyhive.com/vancouver/listed/events", date(2026, 3, 7))
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE)
     assert len(events) == 1
     assert events[0].name == "Test Festival"
     assert events[0].city == "Vancouver"

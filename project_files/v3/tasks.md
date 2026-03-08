@@ -77,4 +77,4 @@
 - [x] **QA1**: Run `python3 -m src --date 2026-03-06` end-to-end, verify markdown output
 - [x] **QA2**: Verify HTML report has sortable columns and clickable links
 - [x] **QA3**: Compare output against previous pipeline run for March 6 — event counts and sources align
-- [ ] **QA4**: Run `/find-activities` via slash command with new pipeline, verify results
+- [x] **QA4**: Run `/find-activities` via slash command with new pipeline, verify results

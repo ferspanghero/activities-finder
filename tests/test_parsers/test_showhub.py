@@ -8,51 +8,63 @@ from src.parsers.showhub import parse_showhub
 
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "showhub_sample.html"
+TARGET_DATE = date(2026, 3, 7)
+SOURCE_URL = "https://showhub.ca/weekly-listings/"
 
 
 def _load_fixture() -> str:
     return FIXTURE.read_text()
 
 
+def _parse_fixture(target_date: date = TARGET_DATE) -> list[Event]:
+    return parse_showhub(_load_fixture(), SOURCE_URL, target_date)
+
+
 def test_parse_returns_list_of_events():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = _parse_fixture()
     assert isinstance(events, list)
     assert all(isinstance(e, Event) for e in events)
 
 
 def test_parse_filters_to_target_date():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
-    assert len(events) > 0
-    # Should not include events only on Mar 6 or Mar 8
-    for e in events:
-        assert e.source_name == "ShowHub"
+    events_mar7 = _parse_fixture(date(2026, 3, 7))
+    events_mar8 = _parse_fixture(date(2026, 3, 8))
+    assert len(events_mar7) == 36
+    assert len(events_mar8) == 18
 
 
-def test_parse_extracts_event_name_and_venue():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
-    # At least one event should have a name
-    assert any(e.name for e in events)
+def test_parse_extracts_event_name():
+    events = _parse_fixture()
+    names = [e.name for e in events]
+    assert "Tracey Kofoed" in names
+    assert "The Rattlers" in names
+
+
+def test_parse_extracts_venue_as_address():
+    events = _parse_fixture()
+    ev = next(e for e in events if e.name == "Tracey Kofoed")
+    assert ev.address == "Riley\u2019s"
 
 
 def test_parse_extracts_time():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
-    times = [e.time for e in events if e.time]
-    assert len(times) > 0
+    events = _parse_fixture()
+    ev = next(e for e in events if e.name == "Tracey Kofoed")
+    assert ev.time == "11:00 AM"
 
 
 def test_parse_extracts_source_url():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = _parse_fixture()
     for e in events:
         assert e.source_url.startswith("http")
 
 
 def test_parse_source_name():
-    events = parse_showhub(_load_fixture(), "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = _parse_fixture()
     assert all(e.source_name == "ShowHub" for e in events)
 
 
 def test_parse_empty_html():
-    events = parse_showhub("<html><body></body></html>", "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = parse_showhub("<html><body></body></html>", SOURCE_URL, TARGET_DATE)
     assert events == []
 
 
@@ -63,7 +75,7 @@ def test_parse_date_range_includes_target():
     <li><a href="https://example.com/fest">Big Festival at Venue X</a><br>Friday, Mar 6 – Sunday, Mar 8</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
     assert len(events) == 1
     assert "Big Festival" in events[0].name
 
@@ -74,7 +86,7 @@ def test_parse_excludes_wrong_date():
     <li><a href="https://example.com/show">Solo Show at Club Y</a><br>Friday, Mar 6 at 8:00 PM</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
     assert len(events) == 0
 
 
@@ -84,7 +96,7 @@ def test_parse_exact_date_match():
     <li><a href="https://example.com/show">Jazz Night at The Roxy</a><br>Saturday, Mar 7 at 9:00 PM</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, "https://showhub.ca/weekly-listings/", date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
     assert len(events) == 1
     assert events[0].name == "Jazz Night"
     assert events[0].address == "The Roxy"
