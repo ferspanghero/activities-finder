@@ -16,8 +16,8 @@ def _load_fixture() -> str:
     return FIXTURE.read_text()
 
 
-def _parse_fixture(target_date: date = TARGET_DATE) -> list[Event]:
-    return parse_dailyhive(_load_fixture(), SOURCE_URL, target_date)
+def _parse_fixture(from_date: date = TARGET_DATE, to_date: date = TARGET_DATE) -> list[Event]:
+    return parse_dailyhive(_load_fixture(), SOURCE_URL, from_date, to_date)
 
 
 def test_parse_returns_list_of_events():
@@ -62,10 +62,15 @@ def test_parse_source_name():
     assert all(e.source_name == "Daily Hive" for e in events)
 
 
+def test_parse_event_date():
+    events = _parse_fixture()
+    assert all(e.event_date == TARGET_DATE for e in events)
+
+
 def test_parse_filters_by_target_date():
     """Events that don't span the target date should be excluded."""
-    events_mar7 = _parse_fixture(date(2026, 3, 7))
-    events_apr1 = _parse_fixture(date(2026, 4, 1))
+    events_mar7 = _parse_fixture(date(2026, 3, 7), date(2026, 3, 7))
+    events_apr1 = _parse_fixture(date(2026, 4, 1), date(2026, 4, 1))
     assert len(events_mar7) == 6
     assert len(events_apr1) == 2
     # Gathered Vintage is Mar 7 only — should not appear on Apr 1
@@ -75,14 +80,14 @@ def test_parse_filters_by_target_date():
 
 def test_parse_empty_html():
     events = parse_dailyhive(
-        "<html><body></body></html>", SOURCE_URL, TARGET_DATE,
+        "<html><body></body></html>", SOURCE_URL, TARGET_DATE, TARGET_DATE,
     )
     assert events == []
 
 
 def test_parse_no_next_data():
     html = "<html><body><p>No data</p></body></html>"
-    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE)
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE, TARGET_DATE)
     assert events == []
 
 
@@ -114,8 +119,30 @@ def test_parse_inline_json_events():
     ]}}}
     </script>
     </body></html>"""
-    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE)
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE, TARGET_DATE)
     assert len(events) == 1
     assert events[0].name == "Test Festival"
     assert events[0].city == "Vancouver"
     assert events[0].address == "123 Main St"
+    assert events[0].event_date == TARGET_DATE
+
+
+def test_parse_event_date_is_clamped_to_range_start():
+    """Multi-day event starting before the query range gets clamped event_date."""
+    html = """<html><body>
+    <script id="__NEXT_DATA__" type="application/json">
+    {"props":{"pageProps":{"upcomingEvents":[
+        {
+            "id": 1,
+            "title": "Long Festival",
+            "venue_details": {"city": "Vancouver"},
+            "start_datetime": "2026-03-05T10:00:00.000Z",
+            "end_datetime": "2026-03-12T22:00:00.000Z",
+            "slug": "long-festival"
+        }
+    ]}}}
+    </script>
+    </body></html>"""
+    events = parse_dailyhive(html, SOURCE_URL, date(2026, 3, 8), date(2026, 3, 10))
+    assert len(events) == 1
+    assert events[0].event_date == date(2026, 3, 8)

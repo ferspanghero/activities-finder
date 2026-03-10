@@ -5,6 +5,7 @@ import re
 from datetime import date
 
 from src.models import Event, SourceStatus
+from src.renderers.formatting import format_short_date
 from src.renderers.maps import build_maps_url
 
 
@@ -21,6 +22,7 @@ th{background:#343a40;color:#fff;padding:10px 12px;text-align:left;cursor:pointe
 th:hover{background:#495057}
 .sort-arrow{font-size:.75rem;margin-left:4px}
 td{padding:8px 12px;border-bottom:1px solid #dee2e6}
+td:nth-child(4){min-width:110px;white-space:nowrap}
 tbody tr:nth-child(even){background:#f8f9fa}
 tbody tr:hover{background:#e9ecef}
 a{color:#0d6efd;text-decoration:none}
@@ -42,9 +44,11 @@ _JS = """\
       const rows=Array.from(tbody.querySelectorAll("tr"));
       rows.sort((a,b)=>{
         let av,bv;
-        if(col===3){
-          av=parseInt(a.children[col].dataset.sortValue)||0;
-          bv=parseInt(b.children[col].dataset.sortValue)||0;
+        if(col===3||col===4){
+          const svA=a.children[col].dataset.sortValue;
+          const svB=b.children[col].dataset.sortValue;
+          if(col===4){av=parseInt(svA)||0;bv=parseInt(svB)||0;}
+          else{av=svA||"";bv=svB||"";}
         }else{
           av=a.children[col].textContent.trim().toLowerCase();
           bv=b.children[col].textContent.trim().toLowerCase();
@@ -61,10 +65,15 @@ _JS = """\
 })();"""
 
 
-def format_date_display(iso_date: str) -> str:
-    """'2026-03-08' -> 'Sunday, March 8, 2026'"""
-    d = date.fromisoformat(iso_date)
-    return f"{d.strftime('%A, %B')} {d.day}, {d.year}"
+def format_date_display(from_date: date, to_date: date) -> str:
+    """Format a date range for display in headings."""
+    if from_date == to_date:
+        return f"{from_date.strftime('%A, %B')} {from_date.day}, {from_date.year}"
+    if from_date.year == to_date.year and from_date.month == to_date.month:
+        return f"{from_date.strftime('%B')} {from_date.day}\u2013{to_date.day}, {from_date.year}"
+    if from_date.year == to_date.year:
+        return f"{from_date.strftime('%B')} {from_date.day} \u2013 {to_date.strftime('%B')} {to_date.day}, {from_date.year}"
+    return f"{from_date.strftime('%B')} {from_date.day}, {from_date.year} \u2013 {to_date.strftime('%B')} {to_date.day}, {to_date.year}"
 
 
 def escape_and_format(value: str | None) -> str:
@@ -94,6 +103,8 @@ def parse_time_to_minutes(time_str: str | None) -> int:
 
 def build_event_row(event: Event) -> str:
     name = escape_and_format(event.name)
+    date_display = format_short_date(event.event_date)
+    date_sort = event.event_date.isoformat()
     city = escape_and_format(event.city)
     address = escape_and_format(event.address)
     time = escape_and_format(event.time)
@@ -113,6 +124,7 @@ def build_event_row(event: Event) -> str:
         f"<td>{name}</td>"
         f"<td>{city}</td>"
         f"<td>{address_cell}</td>"
+        f'<td data-sort-value="{date_sort}">{date_display}</td>'
         f'<td data-sort-value="{sort_value}">{time}</td>'
         f'<td><a href="{source_url}" target="_blank" rel="noopener noreferrer">{source_name}</a></td>'
         f"</tr>"
@@ -129,9 +141,9 @@ def build_sources_footer(statuses: list[SourceStatus]) -> str:
     return "Sources checked: " + ", ".join(parts)
 
 
-def render_html(events: list[Event], source_statuses: list[SourceStatus], date_str: str) -> str:
+def render_html(events: list[Event], source_statuses: list[SourceStatus], from_date: date, to_date: date) -> str:
     """Convert Event objects to a self-contained HTML report."""
-    date_display = format_date_display(date_str)
+    date_display = format_date_display(from_date, to_date)
     cities = {e.city for e in events if e.city}
     sources_reporting = sum(1 for s in source_statuses if s.count > 0)
 
@@ -150,8 +162,9 @@ def render_html(events: list[Event], source_statuses: list[SourceStatus], date_s
 <th data-col="0">Event Name <span class="sort-arrow"></span></th>
 <th data-col="1">City <span class="sort-arrow"></span></th>
 <th data-col="2">Exact Address <span class="sort-arrow"></span></th>
-<th data-col="3">Time <span class="sort-arrow"></span></th>
-<th data-col="4">Source <span class="sort-arrow"></span></th>
+<th data-col="3">Date <span class="sort-arrow"></span></th>
+<th data-col="4">Time <span class="sort-arrow"></span></th>
+<th data-col="5">Source <span class="sort-arrow"></span></th>
 </tr>
 </thead>
 <tbody>
@@ -160,7 +173,8 @@ def render_html(events: list[Event], source_statuses: list[SourceStatus], date_s
 </table>
 </div>"""
     else:
-        table_html = '<p class="no-events">No events found for this date.</p>'
+        no_events_label = "date range" if from_date != to_date else "date"
+        table_html = f'<p class="no-events">No events found for this {no_events_label}.</p>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">

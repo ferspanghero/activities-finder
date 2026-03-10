@@ -16,8 +16,8 @@ def _load_fixture() -> str:
     return FIXTURE.read_text()
 
 
-def _parse_fixture(target_date: date = TARGET_DATE) -> list[Event]:
-    return parse_bcaletrail(_load_fixture(), SOURCE_URL, target_date)
+def _parse_fixture(from_date: date = TARGET_DATE, to_date: date = TARGET_DATE) -> list[Event]:
+    return parse_bcaletrail(_load_fixture(), SOURCE_URL, from_date, to_date)
 
 
 def test_parse_returns_list_of_events():
@@ -88,6 +88,11 @@ def test_parse_source_name():
     assert all(e.source_name == "BC Ale Trail" for e in events)
 
 
+def test_parse_event_date():
+    events = _parse_fixture()
+    assert all(e.event_date == TARGET_DATE for e in events)
+
+
 def test_parse_missing_location():
     """Events with empty locations list should have city=None, address=None."""
     events = _parse_fixture()
@@ -97,5 +102,5 @@ def test_parse_missing_location():
 
 
 def test_parse_empty_html():
-    events = parse_bcaletrail("<html><body></body></html>", SOURCE_URL, TARGET_DATE)
+    events = parse_bcaletrail("<html><body></body></html>", SOURCE_URL, TARGET_DATE, TARGET_DATE)
     assert events == []

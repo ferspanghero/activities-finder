@@ -34,10 +34,10 @@ def _month_num(abbr: str) -> int | None:
     return _MONTHS.get(abbr.lower().rstrip("."))
 
 
-def _matches_target_date(dt_text: str, target: date) -> tuple[bool, str | None]:
-    """Check if a date/time string matches the target date.
+def _matches_date_range(dt_text: str, from_date: date, to_date: date) -> tuple[bool, date | None, str | None]:
+    """Check if a date/time string falls within the query date range.
 
-    Returns (matches, time_str or None).
+    Returns (matches, event_date, time_str or None).
     """
     # Try date range first: "Friday, Mar 6 – Sunday, Mar 8"
     m = _DATE_RANGE_RE.search(dt_text)
@@ -48,9 +48,10 @@ def _matches_target_date(dt_text: str, target: date) -> tuple[bool, str | None]:
         end_day = int(m.group(4))
         if start_month and end_month:
             try:
-                start = date(target.year, start_month, start_day)
-                end = date(target.year, end_month, end_day)
-                return start <= target <= end, None
+                start = date(from_date.year, start_month, start_day)
+                end = date(from_date.year, end_month, end_day)
+                if start <= to_date and end >= from_date:
+                    return True, max(start, from_date), None
             except ValueError:
                 pass
 
@@ -62,16 +63,17 @@ def _matches_target_date(dt_text: str, target: date) -> tuple[bool, str | None]:
         time_str = m.group(3).strip()
         if month:
             try:
-                event_date = date(target.year, month, day)
-                return event_date == target, time_str
+                evt_date = date(from_date.year, month, day)
+                if from_date <= evt_date <= to_date:
+                    return True, evt_date, time_str
             except ValueError:
                 pass
 
-    return False, None
+    return False, None, None
 
 
-def parse_showhub(html: str, source_url: str, target_date: date) -> list[Event]:
-    """Parse ShowHub HTML into Event objects, filtered to target_date."""
+def parse_showhub(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
+    """Parse ShowHub HTML into Event objects, filtered to the date range."""
     soup = BeautifulSoup(html, "html.parser")
     events = []
 
@@ -91,7 +93,7 @@ def parse_showhub(html: str, source_url: str, target_date: date) -> list[Event]:
                     else br.next_sibling.get_text(strip=True)
                 )
 
-            matches, time_str = _matches_target_date(dt_text, target_date)
+            matches, evt_date, time_str = _matches_date_range(dt_text, from_date, to_date)
             if not matches:
                 continue
 
@@ -108,6 +110,7 @@ def parse_showhub(html: str, source_url: str, target_date: date) -> list[Event]:
                 city=None,  # ShowHub doesn't include city in listings
                 address=venue.strip() if venue else None,
                 time=time_str,
+                event_date=evt_date,
                 source_name="ShowHub",
                 source_url=link.get("href", source_url),
             ))

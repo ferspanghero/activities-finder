@@ -17,40 +17,55 @@ from src.models import FetchResult
 
 
 def test_build_url_do604():
-    url = build_source_url("do604", date(2026, 3, 7))
+    url = build_source_url("do604", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://do604.com/events/2026/03/07"
 
 
 def test_build_url_dailyhive():
-    url = build_source_url("dailyhive", date(2026, 3, 7))
+    url = build_source_url("dailyhive", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://dailyhive.com/vancouver/listed/events?after=2026-03-07&before=2026-03-07"
 
 
+def test_build_url_dailyhive_range():
+    url = build_source_url("dailyhive", date(2026, 3, 7), date(2026, 3, 10))
+    assert url == "https://dailyhive.com/vancouver/listed/events?after=2026-03-07&before=2026-03-10"
+
+
 def test_build_url_rhythmchanges():
-    url = build_source_url("rhythmchanges", date(2026, 3, 7))
+    url = build_source_url("rhythmchanges", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://rhythmchanges.ca/gigs/"
 
 
 def test_build_url_showhub():
-    url = build_source_url("showhub", date(2026, 3, 7))
+    url = build_source_url("showhub", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://showhub.ca/weekly-listings/"
 
 
 def test_build_url_infidelsjazz():
-    url = build_source_url("infidelsjazz", date(2026, 3, 7))
+    url = build_source_url("infidelsjazz", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date=2026-03-07&end_date=2026-03-07"
 
 
+def test_build_url_infidelsjazz_range():
+    url = build_source_url("infidelsjazz", date(2026, 3, 7), date(2026, 3, 10))
+    assert url == "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date=2026-03-07&end_date=2026-03-10"
+
+
 def test_build_url_bcaletrail():
-    url = build_source_url("bcaletrail", date(2026, 3, 7))
+    url = build_source_url("bcaletrail", date(2026, 3, 7), date(2026, 3, 7))
     assert url == "https://bcaletrail.ca/events/?date-start=2026-03-07&date-end=2026-03-07"
 
 
+def test_build_url_bcaletrail_range():
+    url = build_source_url("bcaletrail", date(2026, 3, 7), date(2026, 3, 10))
+    assert url == "https://bcaletrail.ca/events/?date-start=2026-03-07&date-end=2026-03-10"
+
+
 def test_build_url_different_date():
-    url = build_source_url("do604", date(2026, 2, 28))
+    url = build_source_url("do604", date(2026, 2, 28), date(2026, 2, 28))
     assert url == "https://do604.com/events/2026/02/28"
 
-    url = build_source_url("dailyhive", date(2026, 2, 28))
+    url = build_source_url("dailyhive", date(2026, 2, 28), date(2026, 2, 28))
     assert url == "https://dailyhive.com/vancouver/listed/events?after=2026-02-28&before=2026-02-28"
 
 
@@ -95,18 +110,30 @@ SAMPLE_INFIDELS_API_RESPONSE = json.dumps({
 })
 
 
-@pytest.mark.asyncio
-async def test_fetch_raw_sources_returns_fetch_results():
-    target = date(2026, 3, 7)
-    with aioresponses() as mocked:
-        for source_id in SOURCES:
-            url = build_source_url(source_id, target)
+def _mock_all_sources(mocked, from_date, to_date):
+    """Register mock responses for all sources."""
+    from datetime import timedelta
+    for source_id, source in SOURCES.items():
+        if source.get("per_day"):
+            d = from_date
+            while d <= to_date:
+                url = build_source_url(source_id, d, d)
+                mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
+                d += timedelta(days=1)
+        else:
+            url = build_source_url(source_id, from_date, to_date)
             if source_id == "infidelsjazz":
                 mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        results = await fetch_raw_sources(target)
+
+@pytest.mark.asyncio
+async def test_fetch_raw_sources_returns_fetch_results():
+    target = date(2026, 3, 7)
+    with aioresponses() as mocked:
+        _mock_all_sources(mocked, target, target)
+        results = await fetch_raw_sources(target, target)
 
     assert len(results) == len(SOURCES)
     assert all(isinstance(r, FetchResult) for r in results)
@@ -118,14 +145,8 @@ async def test_fetch_raw_sources_returns_raw_html():
     """HTML sources should return raw HTML, not markdown."""
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
-        for source_id in SOURCES:
-            url = build_source_url(source_id, target)
-            if source_id == "infidelsjazz":
-                mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
-            else:
-                mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
-
-        results = await fetch_raw_sources(target)
+        _mock_all_sources(mocked, target, target)
+        results = await fetch_raw_sources(target, target)
 
     do604 = next(r for r in results if r.source_id == "do604")
     assert isinstance(do604.content, str)
@@ -137,14 +158,8 @@ async def test_fetch_raw_sources_returns_parsed_json():
     """Infidels Jazz should return parsed dict, not raw string."""
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
-        for source_id in SOURCES:
-            url = build_source_url(source_id, target)
-            if source_id == "infidelsjazz":
-                mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
-            else:
-                mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
-
-        results = await fetch_raw_sources(target)
+        _mock_all_sources(mocked, target, target)
+        results = await fetch_raw_sources(target, target)
 
     infidels = next(r for r in results if r.source_id == "infidelsjazz")
     assert isinstance(infidels.content, dict)
@@ -155,16 +170,19 @@ async def test_fetch_raw_sources_returns_parsed_json():
 async def test_fetch_raw_sources_handles_errors():
     target = date(2026, 3, 7)
     with aioresponses() as mocked:
-        for source_id in SOURCES:
-            url = build_source_url(source_id, target)
+        # Mock Do604 as error, all others as success
+        do604_url = build_source_url("do604", target, target)
+        mocked.get(do604_url, exception=aiohttp.ClientConnectionError("Connection timeout"))
+        for source_id, source in SOURCES.items():
             if source_id == "do604":
-                mocked.get(url, exception=aiohttp.ClientConnectionError("Connection timeout"))
-            elif source_id == "infidelsjazz":
+                continue
+            url = build_source_url(source_id, target, target)
+            if source_id == "infidelsjazz":
                 mocked.get(url, body=SAMPLE_INFIDELS_API_RESPONSE, content_type="application/json")
             else:
                 mocked.get(url, body=SAMPLE_HTML, content_type="text/html")
 
-        results = await fetch_raw_sources(target)
+        results = await fetch_raw_sources(target, target)
 
     assert len(results) == len(SOURCES)
     do604 = next(r for r in results if r.source_id == "do604")
@@ -173,3 +191,24 @@ async def test_fetch_raw_sources_handles_errors():
     # Other sources should succeed
     others = [r for r in results if r.source_id != "do604"]
     assert all(r.error is None for r in others)
+
+
+@pytest.mark.asyncio
+async def test_fetch_raw_sources_per_day_do604_range():
+    """Do604 should produce one FetchResult per day in a multi-day range."""
+    from_date = date(2026, 3, 7)
+    to_date = date(2026, 3, 9)
+    with aioresponses() as mocked:
+        _mock_all_sources(mocked, from_date, to_date)
+        results = await fetch_raw_sources(from_date, to_date)
+
+    do604_results = [r for r in results if r.source_id == "do604"]
+    assert len(do604_results) == 3  # 3 days
+    do604_dates = [(r.from_date, r.to_date) for r in do604_results]
+    assert (date(2026, 3, 7), date(2026, 3, 7)) in do604_dates
+    assert (date(2026, 3, 8), date(2026, 3, 8)) in do604_dates
+    assert (date(2026, 3, 9), date(2026, 3, 9)) in do604_dates
+
+    # Other sources should still be single fetch
+    other_results = [r for r in results if r.source_id != "do604"]
+    assert len(other_results) == len(SOURCES) - 1

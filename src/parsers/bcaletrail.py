@@ -18,24 +18,24 @@ def _format_time(iso_str: str) -> str | None:
         return None
 
 
-def _matches_target_date(upcoming_times: list[dict], target: date) -> tuple[bool, str | None]:
-    """Check if any upcoming time falls on the target date.
+def _matches_date_range(upcoming_times: list[dict], from_date: date, to_date: date) -> tuple[bool, str | None, date | None]:
+    """Check if any upcoming time falls within the query date range.
 
-    Returns (matches, iso_start_str or None).
+    Returns (matches, iso_start_str or None, event_date or None).
     """
     for t in upcoming_times:
         start_str = t.get("start", "")
         try:
             start_dt = datetime.fromisoformat(start_str)
-            if start_dt.date() == target:
-                return True, start_str
+            if from_date <= start_dt.date() <= to_date:
+                return True, start_str, start_dt.date()
         except (ValueError, TypeError):
             continue
-    return False, None
+    return False, None, None
 
 
-def parse_bcaletrail(html: str, source_url: str, target_date: date) -> list[Event]:
-    """Parse BC Ale Trail HTML into Event objects, filtered to target_date."""
+def parse_bcaletrail(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
+    """Parse BC Ale Trail HTML into Event objects, filtered to the date range."""
     soup = BeautifulSoup(html, "html.parser")
     events: list[Event] = []
 
@@ -53,8 +53,8 @@ def parse_bcaletrail(html: str, source_url: str, target_date: date) -> list[Even
             continue
         record = records[0]
 
-        matches, start_str = _matches_target_date(
-            record.get("upcoming_times", []), target_date
+        matches, start_str, evt_date = _matches_date_range(
+            record.get("upcoming_times", []), from_date, to_date
         )
         if not matches:
             continue
@@ -83,6 +83,7 @@ def parse_bcaletrail(html: str, source_url: str, target_date: date) -> list[Even
             city=city,
             address=address,
             time=time_str,
+            event_date=evt_date,
             source_name="BC Ale Trail",
             source_url=event_url,
         ))

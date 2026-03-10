@@ -15,17 +15,23 @@ def _parse_datetime(dt_str: str) -> datetime:
     return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
 
 
-def _event_spans_date(item: dict, target_date: date) -> bool:
-    """Check if a multi-day event actually covers the target date."""
+def _event_overlaps_range(item: dict, from_date: date, to_date: date) -> tuple[bool, date]:
+    """Check if a multi-day event overlaps the query date range.
+
+    Returns (overlaps, event_date) where event_date is the first day
+    of the event within the queried range.
+    """
     try:
         start = _parse_datetime(item["start_datetime"]).date()
         end = _parse_datetime(item["end_datetime"]).date()
-        return start <= target_date <= end
+        if start <= to_date and end >= from_date:
+            return True, max(start, from_date)
+        return False, from_date
     except (KeyError, ValueError):
-        return True  # If we can't parse dates, include it
+        return True, from_date  # If we can't parse dates, include it
 
 
-def parse_dailyhive(html: str, source_url: str, target_date: date) -> list[Event]:
+def parse_dailyhive(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
     """Parse Daily Hive HTML (Next.js __NEXT_DATA__) into Event objects."""
     soup = BeautifulSoup(html, "html.parser")
     script = soup.find("script", id="__NEXT_DATA__")
@@ -45,7 +51,8 @@ def parse_dailyhive(html: str, source_url: str, target_date: date) -> list[Event
 
     events = []
     for item in items:
-        if not _event_spans_date(item, target_date):
+        overlaps, event_date = _event_overlaps_range(item, from_date, to_date)
+        if not overlaps:
             continue
 
         venue = item.get("venue_details") or {}
@@ -57,6 +64,7 @@ def parse_dailyhive(html: str, source_url: str, target_date: date) -> list[Event
             city=venue.get("city"),
             address=venue.get("address"),
             time=None,  # Daily Hive doesn't provide human-readable time reliably
+            event_date=event_date,
             source_name="Daily Hive",
             source_url=event_url,
         ))

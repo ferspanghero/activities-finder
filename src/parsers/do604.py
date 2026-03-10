@@ -1,5 +1,7 @@
 """Parser for Do604 event listings (HTML)."""
 
+from datetime import date
+
 from bs4 import BeautifulSoup
 
 from src.models import Event
@@ -7,7 +9,7 @@ from src.models import Event
 BASE_URL = "https://do604.com"
 
 
-def parse_do604(html: str, source_url: str) -> list[Event]:
+def parse_do604(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
     """Parse Do604 HTML into Event objects."""
     soup = BeautifulSoup(html, "html.parser")
     events = []
@@ -29,6 +31,7 @@ def parse_do604(html: str, source_url: str) -> list[Event]:
             city=city_el["content"] if city_el else None,
             address=street_el["content"] if street_el else None,
             time=time_text,
+            event_date=from_date,
             source_name="Do604",
             source_url=BASE_URL + permalink if permalink else source_url,
         ))

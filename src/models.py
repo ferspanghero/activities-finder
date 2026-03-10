@@ -11,6 +11,7 @@ class Event:
     city: Optional[str]
     address: Optional[str]
     time: Optional[str]
+    event_date: date
     source_name: str
     source_url: str
 
@@ -22,7 +23,8 @@ class FetchResult:
     url: str
     content: Optional[str | dict]
     error: Optional[str]
-    target_date: date
+    from_date: date
+    to_date: date
 
 
 @dataclass(slots=True)

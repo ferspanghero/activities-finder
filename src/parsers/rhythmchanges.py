@@ -61,14 +61,14 @@ def _parse_gig_line(text: str) -> tuple[str | None, str | None, str | None]:
     return time_str, None, rest
 
 
-def parse_rhythmchanges(html: str, source_url: str, target_date: date) -> list[Event]:
-    """Parse Rhythm Changes HTML into Event objects for the target date."""
+def parse_rhythmchanges(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
+    """Parse Rhythm Changes HTML into Event objects for the date range."""
     soup = BeautifulSoup(html, "html.parser")
     events = []
 
     for h4 in soup.find_all("h4"):
-        day_date = _parse_day_header(h4.get_text(strip=True), target_date.year)
-        if day_date != target_date:
+        day_date = _parse_day_header(h4.get_text(strip=True), from_date.year)
+        if not day_date or not (from_date <= day_date <= to_date):
             continue
 
         # Get the <ul> following this h4
@@ -92,6 +92,7 @@ def parse_rhythmchanges(html: str, source_url: str, target_date: date) -> list[E
                 city=None,  # Rhythm Changes doesn't list cities
                 address=venue,
                 time=time_str,
+                event_date=day_date,
                 source_name="Rhythm Changes",
                 source_url=source_url,
             ))

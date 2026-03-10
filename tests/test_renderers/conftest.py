@@ -1,5 +1,7 @@
 """Shared fixtures for renderer tests."""
 
+from datetime import date
+
 import pytest
 
 from src.models import Event, SourceStatus
@@ -9,8 +11,10 @@ from src.models import Event, SourceStatus
 def sample_events():
     return [
         Event(name="Jazz Night", city="Vancouver", address="732 Main St", time="8:00 PM",
+              event_date=date(2026, 3, 7),
               source_name="Do604", source_url="https://do604.com/events/jazz"),
         Event(name="Rock Show", city="Burnaby", address=None, time="9:00 PM",
+              event_date=date(2026, 3, 7),
               source_name="ShowHub", source_url="https://showhub.ca/show/rock"),
     ]
 

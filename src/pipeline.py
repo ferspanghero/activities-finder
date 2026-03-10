@@ -22,31 +22,47 @@ class PipelineResult:
     source_statuses: list[SourceStatus] = field(default_factory=list)
 
 
-def _dispatch_parser(fetch_result: FetchResult, target_date: date) -> list[Event]:
+def _dispatch_parser(fetch_result: FetchResult) -> list[Event]:
     """Route a FetchResult to the appropriate parser."""
     sid = fetch_result.source_id
     content = fetch_result.content
     url = fetch_result.url
+    from_d, to_d = fetch_result.from_date, fetch_result.to_date
 
     if sid == "do604":
-        return parse_do604(content, url)
+        return parse_do604(content, url, from_d, to_d)
     elif sid == "dailyhive":
-        return parse_dailyhive(content, url, target_date)
+        return parse_dailyhive(content, url, from_d, to_d)
     elif sid == "rhythmchanges":
-        return parse_rhythmchanges(content, url, target_date)
+        return parse_rhythmchanges(content, url, from_d, to_d)
     elif sid == "showhub":
-        return parse_showhub(content, url, target_date)
+        return parse_showhub(content, url, from_d, to_d)
     elif sid == "infidelsjazz":
-        return parse_infidelsjazz(content, url)
+        return parse_infidelsjazz(content, url, from_d, to_d)
     elif sid == "bcaletrail":
-        return parse_bcaletrail(content, url, target_date)
+        return parse_bcaletrail(content, url, from_d, to_d)
     else:
         return []
 
 
-async def run_pipeline(target_date: date) -> PipelineResult:
+def _merge_statuses(statuses: list[SourceStatus]) -> list[SourceStatus]:
+    """Merge multiple statuses for the same source (e.g. per-day Do604 fetches)."""
+    merged: dict[str, SourceStatus] = {}
+    for s in statuses:
+        if s.name in merged:
+            merged[s.name] = SourceStatus(
+                name=s.name,
+                count=merged[s.name].count + s.count,
+                error=merged[s.name].error or s.error,
+            )
+        else:
+            merged[s.name] = s
+    return list(merged.values())
+
+
+async def run_pipeline(from_date: date, to_date: date) -> PipelineResult:
     """Fetch all sources, parse, and aggregate into a PipelineResult."""
-    fetch_results = await fetch_raw_sources(target_date)
+    fetch_results = await fetch_raw_sources(from_date, to_date)
 
     all_events: list[Event] = []
     statuses: list[SourceStatus] = []
@@ -57,7 +73,7 @@ async def run_pipeline(target_date: date) -> PipelineResult:
             continue
 
         try:
-            events = _dispatch_parser(fr, target_date)
+            events = _dispatch_parser(fr)
         except Exception as e:
             logger.error("Parser error for %s: %s", fr.source_name, e)
             statuses.append(SourceStatus(name=fr.source_name, count=0, error=str(e)))
@@ -67,5 +83,6 @@ async def run_pipeline(target_date: date) -> PipelineResult:
         all_events.extend(events)
         statuses.append(SourceStatus(name=fr.source_name, count=len(events), error=None))
 
+    statuses = _merge_statuses(statuses)
     logger.info("Pipeline complete: %d total events from %d sources", len(all_events), len(statuses))
     return PipelineResult(events=all_events, source_statuses=statuses)

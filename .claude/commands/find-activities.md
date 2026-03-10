@@ -8,7 +8,7 @@ User query: $ARGUMENTS
 
 Extract from the user query:
 
-- **Date**: If the user specifies a date, use it (format: YYYY-MM-DD). Default: today's date.
+- **Date**: If the user specifies a single date, use it for both `--from` and `--to` (format: YYYY-MM-DD). If the user specifies a date range (e.g., "this weekend", "March 7-10"), resolve to `--from YYYY-MM-DD --to YYYY-MM-DD`. Default: today's date for both.
 - **Cities**: Determine the mode:
   - No cities mentioned → no `--cities` flag (pipeline returns all cities)
   - "also include [cities]" → add those cities to the default city list from CLAUDE.md, pass as `--cities`
@@ -22,12 +22,12 @@ State the resolved parameters before proceeding.
 Run the deterministic extraction pipeline:
 
 ```bash
-python3 -m src --date {YYYY-MM-DD} --format {markdown|html} [--cities CITY1,CITY2,...] [--output {FILE}]
+python3 -m src --from {YYYY-MM-DD} --to {YYYY-MM-DD} --format {markdown|html} [--cities CITY1,CITY2,...] [--output {FILE}]
 ```
 
-Choose `--format` and `--output` based on the user's query. Default: `--format html` with `--output events-{YYYY-MM-DD}.html`.
+Choose `--format` and `--output` based on the user's query. Default: `--format html` with `--output events-{YYYY-MM-DD}.html` (or `events-{FROM}_to_{TO}.html` for ranges).
 
-This fetches all 5 sources in parallel, parses them with source-specific parsers, and writes the output file.
+This fetches all 6 sources in parallel, parses them with source-specific parsers, and writes the output file. Results include a Date column and are sorted by date then time.
 
 ## Step 3: Deduplicate
 
@@ -45,8 +45,8 @@ After deduplicating, edit the output file to remove the same duplicate entries a
 ## Step 4: Present Results
 
 Present the deduplicated output to the user:
-1. **Summary header**: "Found X events across Y cities from Z/5 sources"
-2. **Event table** in markdown format
+1. **Summary header**: "Found X events across Y cities from Z/6 sources"
+2. **Event table** in markdown format (with Date column)
 3. **Sources checked footer** with event counts and errors
 
 If the user specified activity types, filter the results to only show matching event types based on event names.

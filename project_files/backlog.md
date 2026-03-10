@@ -31,7 +31,7 @@ Ideas and future enhancements — not scheduled.
 
 ## Pipeline improvements
 
-- Date range support ("this weekend", "next 7 days")
+- ~~Date range support ("this weekend", "next 7 days")~~ — **Done in v5** (`--from`/`--to` flags, max 14 days)
 - Add retry logic to `fetch_raw_sources` — a single transient failure (e.g., 503) drops all events from that source; one retry with short delay would help
 - Improve city name discovery — ShowHub and Rhythm Changes have no city, only venue names. Could map known venues to cities.
 - Explore source URL subsections for targeted fetching (e.g., do604.com/events/music/today)

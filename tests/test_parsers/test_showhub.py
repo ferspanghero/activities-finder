@@ -16,8 +16,8 @@ def _load_fixture() -> str:
     return FIXTURE.read_text()
 
 
-def _parse_fixture(target_date: date = TARGET_DATE) -> list[Event]:
-    return parse_showhub(_load_fixture(), SOURCE_URL, target_date)
+def _parse_fixture(from_date: date = TARGET_DATE, to_date: date = TARGET_DATE) -> list[Event]:
+    return parse_showhub(_load_fixture(), SOURCE_URL, from_date, to_date)
 
 
 def test_parse_returns_list_of_events():
@@ -27,8 +27,8 @@ def test_parse_returns_list_of_events():
 
 
 def test_parse_filters_to_target_date():
-    events_mar7 = _parse_fixture(date(2026, 3, 7))
-    events_mar8 = _parse_fixture(date(2026, 3, 8))
+    events_mar7 = _parse_fixture(date(2026, 3, 7), date(2026, 3, 7))
+    events_mar8 = _parse_fixture(date(2026, 3, 8), date(2026, 3, 8))
     assert len(events_mar7) == 36
     assert len(events_mar8) == 18
 
@@ -63,8 +63,13 @@ def test_parse_source_name():
     assert all(e.source_name == "ShowHub" for e in events)
 
 
+def test_parse_event_date():
+    events = _parse_fixture()
+    assert all(e.event_date == TARGET_DATE for e in events)
+
+
 def test_parse_empty_html():
-    events = parse_showhub("<html><body></body></html>", SOURCE_URL, TARGET_DATE)
+    events = parse_showhub("<html><body></body></html>", SOURCE_URL, TARGET_DATE, TARGET_DATE)
     assert events == []
 
 
@@ -75,9 +80,10 @@ def test_parse_date_range_includes_target():
     <li><a href="https://example.com/fest">Big Festival at Venue X</a><br>Friday, Mar 6 – Sunday, Mar 8</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 1
     assert "Big Festival" in events[0].name
+    assert events[0].event_date == date(2026, 3, 7)
 
 
 def test_parse_excludes_wrong_date():
@@ -86,7 +92,7 @@ def test_parse_excludes_wrong_date():
     <li><a href="https://example.com/show">Solo Show at Club Y</a><br>Friday, Mar 6 at 8:00 PM</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 0
 
 
@@ -96,8 +102,9 @@ def test_parse_exact_date_match():
     <li><a href="https://example.com/show">Jazz Night at The Roxy</a><br>Saturday, Mar 7 at 9:00 PM</li>
     </ul>
     </body></html>"""
-    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7))
+    events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 1
     assert events[0].name == "Jazz Night"
     assert events[0].address == "The Roxy"
     assert events[0].time == "9:00 PM"
+    assert events[0].event_date == date(2026, 3, 7)

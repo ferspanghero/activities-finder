@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 import aiohttp
 
@@ -16,10 +16,11 @@ SOURCES = {
     "do604": {
         "name": "Do604",
         "url_template": "https://do604.com/events/{YYYY}/{MM}/{DD}",
+        "per_day": True,
     },
     "dailyhive": {
         "name": "Daily Hive",
-        "url_template": "https://dailyhive.com/vancouver/listed/events?after={date}&before={date}",
+        "url_template": "https://dailyhive.com/vancouver/listed/events?after={from_date}&before={to_date}",
     },
     "rhythmchanges": {
         "name": "Rhythm Changes",
@@ -31,23 +32,24 @@ SOURCES = {
     },
     "infidelsjazz": {
         "name": "Infidels Jazz",
-        "url_template": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date={date}&end_date={date}",
+        "url_template": "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/?start_date={from_date}&end_date={to_date}",
     },
     "bcaletrail": {
         "name": "BC Ale Trail",
-        "url_template": "https://bcaletrail.ca/events/?date-start={date}&date-end={date}",
+        "url_template": "https://bcaletrail.ca/events/?date-start={from_date}&date-end={to_date}",
     },
 }
 
 
-def build_source_url(source_id: str, target_date: date) -> str:
+def build_source_url(source_id: str, from_date: date, to_date: date) -> str:
     source = SOURCES[source_id]
     template = source["url_template"]
     return template.format(
-        YYYY=f"{target_date.year:04d}",
-        MM=f"{target_date.month:02d}",
-        DD=f"{target_date.day:02d}",
-        date=target_date.isoformat(),
+        YYYY=f"{from_date.year:04d}",
+        MM=f"{from_date.month:02d}",
+        DD=f"{from_date.day:02d}",
+        from_date=from_date.isoformat(),
+        to_date=to_date.isoformat(),
     )
 
 
@@ -81,11 +83,11 @@ def calculate_week_number(target_date: date) -> int:
 
 
 async def _fetch_one_raw(
-    session: aiohttp.ClientSession, source_id: str, target_date: date
+    session: aiohttp.ClientSession, source_id: str, from_date: date, to_date: date
 ) -> FetchResult:
     source = SOURCES[source_id]
     name = source["name"]
-    url = build_source_url(source_id, target_date)
+    url = build_source_url(source_id, from_date, to_date)
 
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
@@ -99,7 +101,8 @@ async def _fetch_one_raw(
             url=url,
             content=None,
             error=str(e),
-            target_date=target_date,
+            from_date=from_date,
+            to_date=to_date,
         )
 
     content: str | dict
@@ -114,7 +117,8 @@ async def _fetch_one_raw(
                 url=url,
                 content=None,
                 error=f"Invalid JSON from {name}: {e}",
-                target_date=target_date,
+                from_date=from_date,
+                to_date=to_date,
             )
     else:
         content = raw
@@ -126,21 +130,27 @@ async def _fetch_one_raw(
         url=url,
         content=content,
         error=None,
-        target_date=target_date,
+        from_date=from_date,
+        to_date=to_date,
     )
 
 
-async def fetch_raw_sources(target_date: date) -> list[FetchResult]:
+async def fetch_raw_sources(from_date: date, to_date: date) -> list[FetchResult]:
     """Fetch all sources and return raw HTML/JSON as FetchResult objects."""
-    logger.info("Fetching %d sources for %s", len(SOURCES), target_date)
+    logger.info("Fetching %d sources for %s to %s", len(SOURCES), from_date, to_date)
     # Browser-like UA required — Daily Hive returns 0 events for bot-like User-Agents
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     async with aiohttp.ClientSession(headers=headers) as session:
-        tasks = [
-            _fetch_one_raw(session, source_id, target_date)
-            for source_id in SOURCES
-        ]
+        tasks = []
+        for source_id, source in SOURCES.items():
+            if source.get("per_day"):
+                d = from_date
+                while d <= to_date:
+                    tasks.append(_fetch_one_raw(session, source_id, d, d))
+                    d += timedelta(days=1)
+            else:
+                tasks.append(_fetch_one_raw(session, source_id, from_date, to_date))
         results = await asyncio.gather(*tasks)
     succeeded = sum(1 for r in results if r.error is None)
     logger.info("Fetched %d/%d sources successfully", succeeded, len(results))
-    return results
+    return list(results)
