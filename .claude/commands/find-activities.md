@@ -17,42 +17,44 @@ Extract from the user query:
 
 State the resolved parameters before proceeding.
 
-## Step 2: Run Pipeline
+## Step 2: Fetch Events
 
-Run the deterministic extraction pipeline:
+Run the fetch step to get a compact event list and cache the data:
 
 ```bash
-python3 -m src --from {YYYY-MM-DD} --to {YYYY-MM-DD} --format {markdown|html} [--cities CITY1,CITY2,...] [--output {FILE}]
+python3 -m src.compact fetch --from {YYYY-MM-DD} --to {YYYY-MM-DD} [--cities CITY1,CITY2,...]
 ```
 
-Choose `--format` and `--output` based on the user's query. Default: `--format html` with `--output events-{YYYY-MM-DD}.html` (or `events-{FROM}_to_{TO}.html` for ranges).
-
-This fetches all 6 sources in parallel, parses them with source-specific parsers, and writes the output file. Results include a Date column and are sorted by date then time.
+This fetches all 6 sources in parallel, parses them, prints a compact numbered event list to stdout, and saves a JSON cache to `.events-cache.json`. No output file is created yet.
 
 ## Step 3: Deduplicate
 
-Read the output file produced in Step 2, then scan the event table for duplicates — the same real-world event listed multiple times across different sources.
+Scan the compact event list from the Step 2 stdout output for duplicates — the same real-world event listed multiple times across different sources.
 
 Rules:
 - Same event at different times (e.g. 7:00 PM vs 9:30 PM) are NOT duplicates — they are separate shows.
 - Different names for the same event at the same venue/time ARE duplicates (e.g. "Festival du Bois" and "37th Annual Festival du Bois").
 - When removing a duplicate, keep the entry with the most complete information (city, address, time filled in).
 
-Remove duplicates from the table and update the event count in the summary header.
+Collect all duplicate indexes to remove, then render the clean file in one command:
 
-After deduplicating, edit the output file to remove the same duplicate entries and update the event count. This works for any format — remove `<tr>` rows in HTML, table rows in markdown. Do not leave blank lines where removed rows were — the table must remain contiguous.
+```bash
+python3 -m src.compact render .events-cache.json --exclude {INDEXES} --format {markdown|html} [--output {FILE}]
+```
+
+Choose `--format` and `--output` based on the user's query. Default: `--format html`. This removes the duplicates from the event list, renders the clean output file, and deletes the cache.
 
 ## Step 4: Present Results
 
-Present the deduplicated output to the user:
+Print a brief console summary only (do NOT print the full event table):
 1. **Summary header**: "Found X events across Y cities from Z/6 sources"
-2. **Event table** in markdown format (with Date column)
-3. **Sources checked footer** with event counts and errors
+2. **Duplicates**: "Removed N duplicates"
+3. **Sources checked footer** with per-source event counts and errors
 
-If the user specified activity types, filter the results to only show matching event types based on event names.
+If the user specified activity types, filter the output file to only show matching event types and mention how many matched.
 
 If no events match, say so clearly and suggest broadening the search.
 
 ## Step 5: Confirm Export
 
-Confirm the output file path and note that it has been updated with deduplicated results.
+Confirm the output file path.

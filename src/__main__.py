@@ -4,15 +4,13 @@ import argparse
 import asyncio
 import logging
 import sys
-from datetime import date
 
+from src.cli_utils import parse_and_validate_dates, build_output_path
 from src.pipeline import run_pipeline
 from src.renderers.markdown_renderer import render_markdown
 from src.renderers.html_renderer import render_html, parse_time_to_minutes
 
 logger = logging.getLogger(__name__)
-
-MAX_RANGE_DAYS = 14
 
 
 def main():
@@ -33,31 +31,12 @@ def main():
         stream=sys.stderr,
     )
 
-    try:
-        from_date = date.fromisoformat(args.from_date)
-    except ValueError:
-        logger.error("Invalid start date format '%s'. Use YYYY-MM-DD.", args.from_date)
-        sys.exit(1)
-
-    try:
-        to_date = date.fromisoformat(args.to_date)
-    except ValueError:
-        logger.error("Invalid end date format '%s'. Use YYYY-MM-DD.", args.to_date)
-        sys.exit(1)
-
-    if from_date > to_date:
-        logger.error("Start date %s is after end date %s.", from_date, to_date)
-        sys.exit(1)
+    from_date, to_date = parse_and_validate_dates(args.from_date, args.to_date)
 
     range_days = (to_date - from_date).days + 1
-    if range_days > MAX_RANGE_DAYS:
-        logger.error("Date range of %d days exceeds maximum of %d days.", range_days, MAX_RANGE_DAYS)
-        sys.exit(1)
-
     logger.info("Pipeline starting for %s to %s (%d days)", from_date, to_date, range_days)
     result = asyncio.run(run_pipeline(from_date, to_date))
 
-    # Apply city filter if specified
     if args.cities:
         allowed = {c.strip() for c in args.cities.split(",")}
         before = len(result.events)
@@ -66,13 +45,7 @@ def main():
 
     result.events.sort(key=lambda e: (e.event_date, parse_time_to_minutes(e.time)))
 
-    ext = "md" if args.format == "markdown" else "html"
-    if args.output:
-        output_path = args.output
-    elif from_date == to_date:
-        output_path = f"events-{from_date.isoformat()}.{ext}"
-    else:
-        output_path = f"events-{from_date.isoformat()}_to_{to_date.isoformat()}.{ext}"
+    output_path = build_output_path(from_date, to_date, args.format, args.output)
 
     if args.format == "markdown":
         content = render_markdown(result.events, result.source_statuses, from_date, to_date)
