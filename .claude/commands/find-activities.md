@@ -36,6 +36,8 @@ Rules:
 - Different names for the same event at the same venue/time ARE duplicates (e.g. "Festival du Bois" and "37th Annual Festival du Bois").
 - When removing a duplicate, keep the entry with the most complete information (city, address, time filled in).
 
+Do NOT display a table or detailed list of duplicates — just state how many were found and removed.
+
 Collect all duplicate indexes to remove, then render the clean file in one command:
 
 ```bash
@@ -55,6 +57,6 @@ If the user specified activity types, filter the output file to only show matchi
 
 If no events match, say so clearly and suggest broadening the search.
 
-## Step 5: Confirm Export
+## Step 5: Export
 
-Confirm the output file path.
+Confirm the output file path, then open it in Firefox.
