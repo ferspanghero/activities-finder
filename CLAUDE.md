@@ -53,6 +53,9 @@ Examples:
 6. Outdoor activities (hikes, group runs)
 7. Community events (markets, fairs)
 8. Trivia nights / pub events
+9. Theatre & performing arts
+10. Cultural celebrations
+11. Family events
 
 Default: search all types. User narrows by specifying types in their query.
 
