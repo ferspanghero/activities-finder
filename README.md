@@ -22,6 +22,7 @@ fetch HTML/JSON → source-specific parsers → list[Event] → renderers → ou
 | [Rhythm Changes](https://rhythmchanges.ca) | Jazz & live music | HTML scrape |
 | [ShowHub](https://showhub.ca) | Local live music & shows | HTML scrape |
 | [Infidels Jazz](https://theinfidelsjazz.ca) | Jazz events | WordPress REST API (JSON) |
+| [BC Ale Trail](https://bcaletrail.ca) | Brewery events (BC-wide) | `data-event-times` JSON in HTML |
 
 No broad web search is used. The curated source list determines coverage.
 
@@ -55,7 +56,7 @@ src/
   models.py            # Event, FetchResult, SourceStatus dataclasses
   pipeline.py          # Orchestrator: fetch → parse → aggregate
   fetch_sources.py     # Async parallel fetcher
-  parsers/             # Source-specific parsers (do604, dailyhive, rhythmchanges, showhub, infidelsjazz)
+  parsers/             # Source-specific parsers (do604, dailyhive, etc.)
   renderers/           # Markdown and HTML renderers
 tests/
   test_parsers/        # Parser unit tests
