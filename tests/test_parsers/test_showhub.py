@@ -4,8 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from src.models import Event
-from src.parsers.showhub import parse_showhub
-
+from src.parsers.showhub import listed_through, parse_showhub
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "showhub_sample.html"
 TARGET_DATE = date(2026, 3, 7)
@@ -40,10 +39,13 @@ def test_parse_extracts_event_name():
     assert "The Rattlers" in names
 
 
-def test_parse_extracts_venue_as_address():
+def test_parse_extracts_venue():
+    # Arrange, Act
     events = _parse_fixture()
+
+    # Assert
     ev = next(e for e in events if e.name == "Tracey Kofoed")
-    assert ev.address == "Riley\u2019s"
+    assert ev.venue == "Riley\u2019s"
 
 
 def test_parse_extracts_time():
@@ -105,6 +107,48 @@ def test_parse_exact_date_match():
     events = parse_showhub(html, SOURCE_URL, date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 1
     assert events[0].name == "Jazz Night"
-    assert events[0].address == "The Roxy"
+    assert events[0].venue == "The Roxy"
     assert events[0].time == "9:00 PM"
     assert events[0].event_date == date(2026, 3, 7)
+
+
+def _show(link: str, when: str) -> str:
+    return f'<ul class="show-list"><li><a href="https://showhub.ca/x">{link}</a><br>{when}</li></ul>'
+
+
+def test_parse_assigns_next_year_across_new_year() -> None:
+    # Arrange
+    html = _show("Band at The Roxy", "Friday, Jan 1 at 9:00 PM")
+
+    # Act
+    events = parse_showhub(html, "https://showhub.ca", date(2026, 12, 30), date(2027, 1, 2))
+
+    # Assert
+    assert [e.event_date for e in events] == [date(2027, 1, 1)]
+
+
+def test_parse_marks_shows_as_live_music() -> None:
+    # Arrange
+    html = _show("Band at The Roxy", "Saturday, Mar 7 at 9:00 PM")
+
+    # Act
+    events = parse_showhub(html, "https://showhub.ca", date(2026, 3, 7), date(2026, 3, 7))
+
+    # Assert
+    assert events[0].category == "music"
+
+
+def test_listed_through_returns_latest_listed_day() -> None:
+    # Arrange
+    html = _show("A at B", "Saturday, Mar 7 at 9:00 PM") + _show("C at D", "Friday, Mar 6 – Sunday, Mar 8")
+
+    # Act
+    last = listed_through(html, date(2026, 3, 7))
+
+    # Assert
+    assert last == date(2026, 3, 8)
+
+
+def test_listed_through_returns_none_for_empty_page() -> None:
+    # Arrange, Act, Assert
+    assert listed_through("<html></html>", date(2026, 3, 7)) is None

@@ -1,11 +1,13 @@
 """Tests for events/parsers/dailyhive.py — Daily Hive HTML/JSON parser."""
 
+import json
 from datetime import date
 from pathlib import Path
 
-from src.models import Event
-from src.parsers.dailyhive import parse_dailyhive
+import pytest
 
+from src.models import Event
+from src.parsers.dailyhive import page_count, parse_dailyhive
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "dailyhive_sample.html"
 TARGET_DATE = date(2026, 3, 7)
@@ -146,3 +148,82 @@ def test_parse_event_date_is_clamped_to_range_start():
     events = parse_dailyhive(html, SOURCE_URL, date(2026, 3, 8), date(2026, 3, 10))
     assert len(events) == 1
     assert events[0].event_date == date(2026, 3, 8)
+
+
+def _page(item: dict, total_pages: int = 1) -> str:
+    data = {"props": {"pageProps": {"upcomingEvents": [item], "pagination": {"total_pages": total_pages}}}}
+    return f'<script id="__NEXT_DATA__" type="application/json">{json.dumps(data)}</script>'
+
+
+def _item(**overrides: object) -> dict:
+    base = {
+        "title": "Show", "slug": "show", "start_datetime": "2026-03-07T19:30:00.000Z",
+        "end_datetime": "2026-03-07T22:00:00.000Z", "price_from": "15", "price_to": "25",
+        "categories": ["comedy"], "venue_details": {"name": "Hall", "city": "Vancouver", "address": "1 A St"},
+    }
+    return {**base, **overrides}
+
+
+def test_parse_sets_start_time_on_first_day() -> None:
+    # Arrange
+    events = _parse_fixture()
+
+    # Act
+    gathered = next(e for e in events if e.name.startswith("Gathered Vintage"))
+
+    # Assert
+    assert gathered.time == "10:00 AM"
+
+
+def test_parse_omits_time_for_runs_that_started_earlier() -> None:
+    # Arrange
+    events = _parse_fixture()
+
+    # Act
+    saw = next(e for e in events if e.name == "I Saw You")
+
+    # Assert
+    assert saw.time is None
+
+
+def test_parse_omits_time_for_midnight_all_day_start() -> None:
+    # Arrange
+    html = _page(_item(start_datetime="2026-03-07T00:00:00.000Z"))
+
+    # Act
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE, TARGET_DATE)
+
+    # Assert
+    assert events[0].time is None
+
+
+def test_parse_extracts_venue_category_and_price_range() -> None:
+    # Arrange
+    events = _parse_fixture()
+
+    # Act
+    saw = next(e for e in events if e.name == "I Saw You")
+
+    # Assert
+    assert (saw.venue, saw.category, saw.price) == ("The Improv Centre", "theatre", "$15–$25")
+
+
+@pytest.mark.parametrize(
+    ("low", "high", "expected"),
+    [("0", "0", "Free"), ("5", "0", "$5"), ("0", "25", "Free\u2013$25"), ("31.50", "38.50", "$31.50–$38.50"), (None, None, None)],
+)
+def test_parse_formats_price(low: str | None, high: str | None, expected: str | None) -> None:
+    # Arrange
+    html = _page(_item(price_from=low, price_to=high))
+
+    # Act
+    events = parse_dailyhive(html, SOURCE_URL, TARGET_DATE, TARGET_DATE)
+
+    # Assert
+    assert events[0].price == expected
+
+
+def test_page_count_reads_total_pages() -> None:
+    # Arrange, Act, Assert
+    assert page_count(_page(_item(), total_pages=3)) == 3
+    assert page_count("<html></html>") == 1

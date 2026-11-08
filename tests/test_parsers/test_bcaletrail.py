@@ -6,7 +6,6 @@ from pathlib import Path
 from src.models import Event
 from src.parsers.bcaletrail import parse_bcaletrail
 
-
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "bcaletrail_sample.html"
 TARGET_DATE = date(2026, 3, 8)
 SOURCE_URL = "https://bcaletrail.ca/events/"
@@ -104,3 +103,36 @@ def test_parse_missing_location():
 def test_parse_empty_html():
     events = parse_bcaletrail("<html><body></body></html>", SOURCE_URL, TARGET_DATE, TARGET_DATE)
     assert events == []
+
+
+def test_parse_emits_one_event_per_matching_date_in_range() -> None:
+    # Arrange, Act
+    events = _parse_fixture(date(2026, 3, 1), date(2026, 3, 15))
+
+    # Assert
+    trivia = [e.event_date for e in events if e.name.startswith("Trivia Night at Farm Country")]
+    assert trivia == [date(2026, 3, 1), date(2026, 3, 8), date(2026, 3, 15)]
+
+
+def test_parse_extracts_venue_and_category() -> None:
+    # Arrange
+    events = _parse_fixture()
+
+    # Act
+    live = next(e for e in events if e.name.startswith("Live Music at Five Roads"))
+    trivia = next(e for e in events if e.name.startswith("Trivia Night"))
+
+    # Assert
+    assert (live.venue, live.category) == ("Five Roads Brewing", "music")
+    assert trivia.category == "trivia"
+
+
+def test_parse_defaults_brewery_events_to_food() -> None:
+    # Arrange
+    events = _parse_fixture(date(2026, 3, 1), date(2026, 3, 15))
+
+    # Act
+    paint = next(e for e in events if e.name.startswith("Paint Night"))
+
+    # Assert
+    assert paint.category == "food"

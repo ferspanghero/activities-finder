@@ -3,9 +3,11 @@
 import re
 from datetime import date
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
+from src.cities import city_from_text
 from src.models import Event
+from src.parsers.dates import infer_year
 
 # Month abbreviation to number
 _MONTHS = {
@@ -47,13 +49,10 @@ def _matches_date_range(dt_text: str, from_date: date, to_date: date) -> tuple[b
         end_month = _month_num(m.group(3))
         end_day = int(m.group(4))
         if start_month and end_month:
-            try:
-                start = date(from_date.year, start_month, start_day)
-                end = date(from_date.year, end_month, end_day)
-                if start <= to_date and end >= from_date:
-                    return True, max(start, from_date), None
-            except ValueError:
-                pass
+            start = infer_year(start_month, start_day, from_date)
+            end = infer_year(end_month, end_day, from_date)
+            if start and end and start <= to_date and end >= from_date:
+                return True, max(start, from_date), None
 
     # Try single date: "Saturday, Mar 7 at 9:00 PM"
     m = _SINGLE_DATE_RE.search(dt_text)
@@ -62,14 +61,45 @@ def _matches_date_range(dt_text: str, from_date: date, to_date: date) -> tuple[b
         day = int(m.group(2))
         time_str = m.group(3).strip()
         if month:
-            try:
-                evt_date = date(from_date.year, month, day)
-                if from_date <= evt_date <= to_date:
-                    return True, evt_date, time_str
-            except ValueError:
-                pass
+            evt_date = infer_year(month, day, from_date)
+            if evt_date and from_date <= evt_date <= to_date:
+                return True, evt_date, time_str
 
     return False, None, None
+
+
+def _listed_dates(dt_text: str, ref: date) -> list[date]:
+    found = []
+    m = _DATE_RANGE_RE.search(dt_text)
+    pairs = [(m.group(1), m.group(2)), (m.group(3), m.group(4))] if m else []
+    if not m and (single := _SINGLE_DATE_RE.search(dt_text)):
+        pairs = [(single.group(1), single.group(2))]
+    for month_abbr, day in pairs:
+        month = _month_num(month_abbr)
+        if month and (d := infer_year(month, int(day), ref)):
+            found.append(d)
+    return found
+
+
+def _date_text(li: Tag) -> str:
+    """Date/time text that follows the <br> in a listing item."""
+    br = li.find("br")
+    if not br or not br.next_sibling:
+        return ""
+    sibling = br.next_sibling
+    return sibling.strip() if isinstance(sibling, str) else sibling.get_text(strip=True)
+
+
+def listed_through(html: str, ref: date) -> date | None:
+    """Last day the weekly page lists, to detect queries that run past the published week."""
+    soup = BeautifulSoup(html, "html.parser")
+    days = [
+        d
+        for ul in soup.select("ul.show-list")
+        for li in ul.find_all("li", recursive=False)
+        for d in _listed_dates(_date_text(li), ref)
+    ]
+    return max(days, default=None)
 
 
 def parse_showhub(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
@@ -83,21 +113,12 @@ def parse_showhub(html: str, source_url: str, from_date: date, to_date: date) ->
             if not link:
                 continue
 
-            # Get date/time text after <br>
-            br = li.find("br")
-            dt_text = ""
-            if br and br.next_sibling:
-                dt_text = (
-                    br.next_sibling.strip()
-                    if isinstance(br.next_sibling, str)
-                    else br.next_sibling.get_text(strip=True)
-                )
-
+            dt_text = _date_text(li)
             matches, evt_date, time_str = _matches_date_range(dt_text, from_date, to_date)
-            if not matches:
+            if not matches or evt_date is None:
                 continue
 
-            # Parse "Artist at Venue" — rsplit so "at" in event names doesn't split wrong
+            # Parse "Artist at Venue": rsplit so "at" in event names doesn't split wrong
             link_text = link.get_text(strip=True)
             if " at " in link_text:
                 name, venue = link_text.rsplit(" at ", 1)
@@ -105,14 +126,17 @@ def parse_showhub(html: str, source_url: str, from_date: date, to_date: date) ->
                 name = link_text
                 venue = None
 
+            venue_name = venue.strip() if venue else None
             events.append(Event(
                 name=name.strip(),
-                city=None,  # ShowHub doesn't include city in listings
-                address=venue.strip() if venue else None,
+                city=city_from_text(venue_name),
+                address=None,
                 time=time_str,
                 event_date=evt_date,
                 source_name="ShowHub",
-                source_url=link.get("href", source_url),
+                source_url=str(link.get("href") or source_url),
+                venue=venue_name,
+                category="music",
             ))
 
     return events

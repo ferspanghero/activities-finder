@@ -1,11 +1,13 @@
 """Parser for BC Ale Trail event listings (HTML with embedded JSON)."""
 
 import json
+from dataclasses import replace
 from datetime import date, datetime
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from src.categories import categorize
 from src.models import Event
 
 
@@ -18,29 +20,30 @@ def _format_time(iso_str: str) -> str | None:
         return None
 
 
-def _matches_date_range(upcoming_times: list[dict], from_date: date, to_date: date) -> tuple[bool, str | None, date | None]:
-    """Check if any upcoming time falls within the query date range.
+def _starts_in_range(upcoming_times: list[dict], from_date: date, to_date: date) -> list[tuple[date, str]]:
+    """First start (date, ISO string) of each distinct day within the query range."""
+    starts: dict[date, str] = {}
 
-    Returns (matches, iso_start_str or None, event_date or None).
-    """
     for t in upcoming_times:
         start_str = t.get("start", "")
         try:
-            start_dt = datetime.fromisoformat(start_str)
-            if from_date <= start_dt.date() <= to_date:
-                return True, start_str, start_dt.date()
+            start_date = datetime.fromisoformat(start_str).date()
         except (ValueError, TypeError):
             continue
-    return False, None, None
+
+        if from_date <= start_date <= to_date:
+            starts.setdefault(start_date, start_str)
+
+    return sorted(starts.items())
 
 
 def parse_bcaletrail(html: str, source_url: str, from_date: date, to_date: date) -> list[Event]:
-    """Parse BC Ale Trail HTML into Event objects, filtered to the date range."""
+    """Parse BC Ale Trail HTML into one Event per occurrence date within the range."""
     soup = BeautifulSoup(html, "html.parser")
     events: list[Event] = []
 
     for card in soup.find_all("div", class_="event-item"):
-        data_str = card.get("data-event-times", "")
+        data_str = str(card.get("data-event-times") or "")
         if not data_str:
             continue
 
@@ -53,10 +56,8 @@ def parse_bcaletrail(html: str, source_url: str, from_date: date, to_date: date)
             continue
         record = records[0]
 
-        matches, start_str, evt_date = _matches_date_range(
-            record.get("upcoming_times", []), from_date, to_date
-        )
-        if not matches:
+        starts = _starts_in_range(record.get("upcoming_times", []), from_date, to_date)
+        if not starts:
             continue
 
         title_el = card.find("h2")
@@ -65,27 +66,25 @@ def parse_bcaletrail(html: str, source_url: str, from_date: date, to_date: date)
             continue
 
         locations = record.get("locations", [])
-        city = None
-        address = None
-        if locations:
-            loc = locations[0]
-            city = (loc.get("city") or "").strip() or None
-            address = (loc.get("street_address") or "").strip() or None
-
-        time_str = _format_time(start_str) if start_str else None
+        loc = locations[0] if locations else {}
+        city = (loc.get("city") or "").strip() or None
+        address = (loc.get("street_address") or "").strip() or None
+        venue = (loc.get("name") or "").strip() or None
 
         event_link = card.find("a", class_="event-thumbnail")
-        href = event_link.get("href", "") if event_link else ""
+        href = str(event_link.get("href") or "") if event_link else ""
         event_url = urljoin(source_url, href) if href else source_url
 
-        events.append(Event(
-            name=title,
-            city=city,
-            address=address,
-            time=time_str,
-            event_date=evt_date,
-            source_name="BC Ale Trail",
-            source_url=event_url,
-        ))
+        template = Event(
+            name=title, city=city, address=address, time=None, event_date=from_date,
+            source_name="BC Ale Trail", source_url=event_url, venue=venue,
+        )
+        # Brewery listings without a more specific keyword count as food & drink.
+        template = replace(template, category=categorize(template) or "food")
+
+        events.extend(
+            replace(template, event_date=evt_date, time=_format_time(start_str))
+            for evt_date, start_str in starts
+        )
 
     return events

@@ -1,0 +1,15 @@
+[tool.ruff]
+# Python 3.10: asyncio.TimeoutError is not yet the builtin TimeoutError.
+target-version = "py310"
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+# CLI entry point: argument wiring only, exercised end-to-end by the subprocess tests.
+omit = ["src/__main__.py"]
+
+[tool.coverage.report]
+exclude_also = [
+    "def main\\(",
+    "if __name__ == .__main__.:",
+]

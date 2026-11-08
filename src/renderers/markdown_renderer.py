@@ -3,46 +3,50 @@
 from datetime import date
 
 from src.models import Event, SourceStatus
-from src.renderers.formatting import format_short_date
+from src.renderers.formatting import (
+    category_label,
+    format_short_date,
+    location_text,
+    maps_query,
+    safe_url,
+    sources_footer,
+    summary_line,
+)
 from src.renderers.maps import build_maps_url
+from src.timeparse import display_time
+
+_MARKDOWN_ESCAPES = str.maketrans({c: f"\\{c}" for c in "|[]<>"})
 
 
-def _em_dash(value: str | None) -> str:
-    return value if value else "\u2014"
+def _cell(value: str | None) -> str:
+    """Table cell text: one line, with table, link, and HTML syntax escaped; em-dash when empty."""
+    return " ".join(value.split()).translate(_MARKDOWN_ESCAPES) if value else "—"
+
+
+def _row(e: Event) -> str:
+    location = location_text(e)
+    maps_url = build_maps_url(maps_query(e))
+    location_cell = f"[{_cell(location)}]({maps_url})" if maps_url else _cell(location)
+    source_url = safe_url(e.source_url)
+    link = f"[{_cell(e.source_name)}]({source_url})" if source_url else _cell(e.source_name)
+    cells = (
+        _cell(e.name), _cell(category_label(e.category)), _cell(e.city), location_cell,
+        format_short_date(e.event_date), _cell(display_time(e.time)), _cell(e.price), link,
+    )
+
+    return "| " + " | ".join(cells) + " |"
 
 
 def render_markdown(events: list[Event], source_statuses: list[SourceStatus], from_date: date, to_date: date) -> str:
     """Render events as a markdown table with summary header and sources footer."""
-    cities = {e.city for e in events if e.city}
-    sources_reporting = sum(1 for s in source_statuses if s.count > 0)
-    total_sources = len(source_statuses)
-
     lines = [
-        f"Found {len(events)} events across {len(cities)} cities from {sources_reporting}/{total_sources} sources",
+        summary_line(events, source_statuses),
         "",
-        "| Event Name | City | Exact Address | Date | Time | Source Link |",
-        "|---|---|---|---|---|---|",
+        "| Event Name | Type | City | Location | Date | Time | Price | Source Link |",
+        "|---|---|---|---|---|---|---|---|",
+        *(_row(e) for e in events),
+        "",
+        sources_footer(source_statuses),
     ]
-
-    for e in events:
-        name = _em_dash(e.name)
-        event_date = format_short_date(e.event_date)
-        city = _em_dash(e.city)
-        maps_url = build_maps_url(e.address)
-        address = f"[{e.address}]({maps_url})" if maps_url else _em_dash(e.address)
-        time = _em_dash(e.time)
-        link = f"[{e.source_name}]({e.source_url})" if e.source_url else e.source_name
-        lines.append(f"| {name} | {city} | {address} | {event_date} | {time} | {link} |")
-
-    # Sources footer
-    parts = []
-    for s in source_statuses:
-        if s.error:
-            parts.append(f"{s.name} (ERROR: {s.error})")
-        else:
-            parts.append(f"{s.name} ({s.count})")
-
-    lines.append("")
-    lines.append("Sources checked: " + ", ".join(parts))
 
     return "\n".join(lines)

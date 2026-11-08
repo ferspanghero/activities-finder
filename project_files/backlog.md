@@ -4,19 +4,9 @@ Ideas and future enhancements — not scheduled.
 
 ## New sources
 
-### Georgia Straight — recommended next source (researched 2026-03-08)
+### Georgia Straight: needs re-research (checked 2026-11-07)
 - **URL:** `https://www.straight.com/listings/thingstodo/{YYYY}-{MM}-{DD}`
-- **Type:** Broad local aggregator — theatre, film, galleries, markets, dance, comedy, literary, community events
-- **Strategy:** HTML scrape (server-rendered Drupal). Date-based URL filtering. ~25 events/page with pagination.
-- **Data quality:** Name, venue, category from listing page. Time, address, city on detail pages (extra HTTP requests needed).
-- **Overlap tested:** 63% new content (17/27 unique for Mar 8). Fills gaps in theatre, galleries, markets, dance, literary.
-- **Effort:** Low-medium. Standard HTML scrape, follows existing parser pattern.
-- **HTML structure (observed, needs confirmation with real aiohttp fetch):**
-  - Events: `<h2>` inside `<a href="/listings/events/{ID}">`
-  - Venue: `<p>` tag after the title link
-  - Category: `<a href="/listings/events/{category-slug}">`
-  - Images: class `gs_thumbnail`
-- **Detail pages** (e.g. `/listings/events/1463555`): have full data — street address, city, time, description, ticket link. Could be scraped async for richer data in a future iteration.
+- The page loads (200) but no longer contains the server-rendered `/listings/events/{ID}` cards described in the earlier research; the calendar appears to be client-rendered. Find the data endpoint before building a parser.
 
 ### Freshet News — recommended (researched 2026-04-11)
 - **URL:** `GET https://www.freshetnews.ca/wp-json/wp/v2/posts?slug=whats-on-{month}-{day}-{year}`
@@ -26,15 +16,6 @@ Ideas and future enhancements — not scheduled.
 - **Overlap:** Low — community content (flea markets, library events, repair cafes, junior sports) not on aggregators.
 - **Volume:** ~10-15 events/day.
 - **Effort:** Medium-high. Prose parsing with regex, but consistent formatting within posts.
-
-### Kids Out and About Vancouver — recommended (researched 2026-04-11)
-- **URL:** `https://vancouver.kidsoutandabout.com/event-list/{YYYY-MM-DD}`
-- **Type:** Family/kids event listings
-- **Strategy:** HTML scrape (Drupal 7 Views, server-rendered). Per-day URL, same pattern as Do604.
-- **Data quality:** Event name (`h2 > a`), full address with postal code (`field-name-field-venue-places-api`), dates (`span.date-display-single`, MM/DD/YYYY), time (`field-name-field-time`), organization name (embedded `dataLayer`).
-- **Overlap:** Low — storytimes, kids workshops, family festivals not on Do604/Daily Hive.
-- **Volume:** ~16 events/Saturday, fewer on weekdays.
-- **Effort:** Low. Clean Drupal Views markup with consistent CSS field classes.
 
 ### City of Burnaby — recommended (researched 2026-04-11)
 - **URL:** `https://www.burnaby.ca/recreation-and-arts/events?date_start={YYYY-MM-DD}&date_end={YYYY-MM-DD}`
@@ -63,8 +44,13 @@ Ideas and future enhancements — not scheduled.
 - **Volume:** ~9-12 events/week (Friday roundups only).
 - **Effort:** Medium. Well-structured but editorial template could change. Weekly cadence limits value.
 
+### Ticketmaster Discovery API: recommended for sports (checked 2026-11-07)
+- **URL:** `https://app.ticketmaster.com/discovery/v2/events.json?city=Vancouver&startDateTime=...&apikey=...`
+- **Type:** Arena and stadium events; the only candidate covering pro sports (Canucks, Whitecaps, BC Lions).
+- **Access:** free self-serve API key, 5000 calls/day, 5 requests/second. Store the key in the keyring.
+
 ### Other candidates (not researched in depth)
-- **Eventbrite API** — REST API with OAuth. Community events, workshops, niche gatherings. Good data but auth setup required.
+- **More BiblioCommons libraries**: only Vancouver (`vpl`) and Richmond (`yourlibrary`) slugs were found; Burnaby is not on BiblioCommons. Other Metro Vancouver libraries need their slugs confirmed.
 - **604 Now** (`604now.com/events`) — Hybrid rendered, event cards with categories. Needs detail page scraping for venue/address.
 
 ### Evaluated and rejected
@@ -88,8 +74,7 @@ Ideas and future enhancements — not scheduled.
 
 ## Pipeline improvements
 
-- Add retry logic to `fetch_raw_sources` — a single transient failure (e.g., 503) drops all events from that source; one retry with short delay would help
-- Improve city name discovery — ShowHub and Rhythm Changes have no city, only venue names. Could map known venues to cities.
+- City for ShowHub and Rhythm Changes events: their venue names rarely appear in address-bearing sources, so the venue lookup leaves most without a city and `--cities` drops them. Options: a curated venue-to-city seed file, or Do604 detail-page lookups.
 - Explore source URL subsections for targeted fetching (e.g., do604.com/events/music/today)
 
 ## Infrastructure

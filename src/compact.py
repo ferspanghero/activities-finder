@@ -1,11 +1,11 @@
-"""Two-step CLI for fetch-then-render with LLM deduplication in between.
+"""Two-step CLI: fetch (with automatic dedup), review uncertain pairs, then render.
 
 Usage:
-    # Step 1: Fetch events and print compact list
+    # Step 1: Fetch, filter, and merge duplicates; print the summary and possible duplicates
     python3 -m src.compact fetch --from 2026-03-17 --to 2026-03-22
 
-    # Step 2: Render from cache, excluding duplicate indexes
-    python3 -m src.compact render .events-cache.json --exclude 1,15,27 --format html --output events.html
+    # Step 2: Render from cache, excluding reviewed duplicate indexes
+    python3 -m src.compact render .events-cache.json --exclude 15,27 --format html --output events.html
 """
 
 import argparse
@@ -16,9 +16,21 @@ import os
 import sys
 from datetime import date
 
+from src.cli_utils import (
+    VENUE_CACHE,
+    FilterOptions,
+    add_filter_arguments,
+    build_output_path,
+    finalize_events,
+    parse_and_validate_dates,
+    recount_sources,
+    validate_filter_options,
+)
+from src.dedup import DedupResult
 from src.models import Event, SourceStatus
 from src.pipeline import run_pipeline
-from src.renderers.html_renderer import render_html, parse_time_to_minutes
+from src.renderers.formatting import location_text, sources_footer
+from src.renderers.html_renderer import render_html
 from src.renderers.markdown_renderer import render_markdown
 
 logger = logging.getLogger(__name__)
@@ -26,22 +38,37 @@ logger = logging.getLogger(__name__)
 CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".events-cache.json")
 
 
-def _print_compact(events: list[Event], source_statuses: list[SourceStatus]) -> None:
-    """Print a compact numbered event list to stdout."""
-    print("# | Name | City | Address | Date | Time | Source")
-    for i, e in enumerate(events, 1):
-        city = e.city or "\u2014"
-        address = e.address or "\u2014"
-        time = e.time or "\u2014"
-        print(f"{i} | {e.name} | {city} | {address} | {e.event_date} | {time} | {e.source_name}")
+_REVIEW_FIELD_MAX = 120
 
-    parts = []
-    for s in source_statuses:
-        if s.error:
-            parts.append(f"{s.name} (ERROR: {s.error})")
-        else:
-            parts.append(f"{s.name} ({s.count})")
-    print(f"\nSources: {', '.join(parts)}")
+
+def _review_field(value: str | None) -> str:
+    """Scraped text made safe for the review list: one line, no column separators, capped."""
+    if not value:
+        return "—"
+
+    return " ".join(value.split()).replace("|", "/")[:_REVIEW_FIELD_MAX]
+
+
+def _row(index: int, e: Event) -> str:
+    fields = (e.name, e.city, location_text(e), str(e.event_date), e.time, e.source_name)
+
+    return f"{index} | " + " | ".join(_review_field(f) for f in fields)
+
+
+def _print_review(result: DedupResult, source_statuses: list[SourceStatus]) -> None:
+    """Print the run summary and each possible-duplicate pair (1-based indexes) for review."""
+    print(f"Events: {len(result.events)} (merged {result.removed} duplicates automatically)")
+    print(f"Possible duplicates to review: {len(result.candidates)} pairs")
+
+    if result.candidates:
+        print("# | Name | City | Location | Date | Time | Source")
+
+    for i, j in result.candidates:
+        print(_row(i, result.events[i - 1]))
+        print(_row(j, result.events[j - 1]))
+        print()
+
+    print(sources_footer(source_statuses).replace("Sources checked:", "Sources:"))
 
 
 def _save_cache(
@@ -69,41 +96,28 @@ def _load_cache(cache_path: str) -> dict:
 
 
 def cmd_fetch(args: argparse.Namespace) -> None:
-    """Fetch events, print compact list, and save cache."""
-    from src.cli_utils import parse_and_validate_dates
-
+    """Fetch, filter, and dedupe events; print review pairs and save the cache."""
     from_date, to_date = parse_and_validate_dates(args.from_date, args.to_date)
+    options = FilterOptions(cities=args.cities, add_cities=args.add_cities, types=args.types)
+
+    try:
+        validate_filter_options(options)
+    except ValueError as e:
+        logger.error("%s", e)
+        sys.exit(2)
 
     range_days = (to_date - from_date).days + 1
     logger.info("Fetching events for %s to %s (%d days)", from_date, to_date, range_days)
-    result = asyncio.run(run_pipeline(from_date, to_date))
+    result = asyncio.run(run_pipeline(from_date, to_date, venue_cache=VENUE_CACHE))
+    deduped = finalize_events(result.events, options)
+    statuses = recount_sources(deduped.events, result.source_statuses)
 
-    if args.cities:
-        allowed = {c.strip() for c in args.cities.split(",")}
-        result.events = [e for e in result.events if e.city and e.city in allowed]
-
-    result.events.sort(key=lambda e: (e.event_date, parse_time_to_minutes(e.time)))
-
-    _print_compact(result.events, result.source_statuses)
-    _save_cache(result.events, result.source_statuses, from_date, to_date)
-
-
-def _recalculate_source_counts(events: list[Event], source_statuses: list[SourceStatus]) -> list[SourceStatus]:
-    """Recalculate source counts from the actual event list."""
-    counts: dict[str, int] = {}
-    for e in events:
-        counts[e.source_name] = counts.get(e.source_name, 0) + 1
-
-    return [
-        SourceStatus(name=s.name, count=counts.get(s.name, 0), error=s.error)
-        for s in source_statuses
-    ]
+    _print_review(deduped, statuses)
+    _save_cache(deduped.events, statuses, from_date, to_date)
 
 
 def cmd_render(args: argparse.Namespace) -> None:
     """Load cache, exclude duplicates, render to file."""
-    from src.cli_utils import build_output_path
-
     try:
         cache = _load_cache(args.cache_file)
     except FileNotFoundError:
@@ -134,7 +148,7 @@ def cmd_render(args: argparse.Namespace) -> None:
         events = [e for i, e in enumerate(events, 1) if i not in exclude_indexes]
         logger.info("Excluded %d duplicates: %d → %d events", before - len(events), before, len(events))
 
-    source_statuses = _recalculate_source_counts(events, source_statuses)
+    source_statuses = recount_sources(events, source_statuses)
 
     if args.format == "markdown":
         content = render_markdown(events, source_statuses, from_date, to_date)
@@ -147,19 +161,21 @@ def cmd_render(args: argparse.Namespace) -> None:
         f.write(content)
     logger.info("Exported %d events to %s", len(events), output_path)
 
-    os.remove(args.cache_file)
-    logger.info("Removed cache file %s", args.cache_file)
+    # Only ever delete the fetch cache, never an arbitrary path passed on the command line.
+    if os.path.basename(args.cache_file) == os.path.basename(CACHE_PATH):
+        os.remove(args.cache_file)
+        logger.info("Removed cache file %s", args.cache_file)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Two-step event pipeline with LLM deduplication")
+    parser = argparse.ArgumentParser(description="Two-step event pipeline with duplicate review")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    fetch_parser = subparsers.add_parser("fetch", help="Fetch events and print compact list")
+    fetch_parser = subparsers.add_parser("fetch", help="Fetch events and print possible duplicates")
     fetch_parser.add_argument("--from", dest="from_date", required=True, help="Start date YYYY-MM-DD")
     fetch_parser.add_argument("--to", dest="to_date", required=True, help="End date YYYY-MM-DD")
-    fetch_parser.add_argument("--cities", help="Comma-separated list of cities to filter by")
+    add_filter_arguments(fetch_parser)
 
     render_parser = subparsers.add_parser("render", help="Render events from cache to file")
     render_parser.add_argument("cache_file", help="Path to the JSON cache file")
@@ -175,6 +191,7 @@ def main() -> None:
         datefmt="%H:%M:%S",
         stream=sys.stderr,
     )
+    logging.getLogger("aiohttp").setLevel(logging.WARNING)
 
     if args.command == "fetch":
         cmd_fetch(args)

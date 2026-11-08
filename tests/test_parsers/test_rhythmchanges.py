@@ -4,8 +4,12 @@ from datetime import date
 from pathlib import Path
 
 from src.models import Event
-from src.parsers.rhythmchanges import parse_rhythmchanges, _parse_gig_line, _parse_day_header
-
+from src.parsers.rhythmchanges import (
+    _parse_day_header,
+    _parse_gig_line,
+    listed_through,
+    parse_rhythmchanges,
+)
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "rhythmchanges_sample.html"
 
@@ -31,10 +35,16 @@ def test_parse_extracts_event_name():
     assert any("Tamas Balai Trio" in n for n in names)
 
 
-def test_parse_extracts_venue_as_address():
-    events = parse_rhythmchanges(_load_fixture(), "https://rhythmchanges.ca/gigs/", date(2026, 3, 7), date(2026, 3, 7))
+def test_parse_extracts_venue():
+    # Arrange
+    html = _load_fixture()
+
+    # Act
+    events = parse_rhythmchanges(html, "https://rhythmchanges.ca/gigs/", date(2026, 3, 7), date(2026, 3, 7))
+
+    # Assert
     tamas = next(e for e in events if "Tamas Balai" in e.name)
-    assert tamas.address == "La Fabrique St-George"
+    assert tamas.venue == "La Fabrique St-George"
 
 
 def test_parse_extracts_time():
@@ -88,11 +98,11 @@ def test_parse_inline_html():
     events = parse_rhythmchanges(html, "https://rhythmchanges.ca/gigs/", date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 2
     assert events[0].name == "Mike Smith Trio"
-    assert events[0].address == "Jazz Club"
+    assert events[0].venue == "Jazz Club"
     assert events[0].time == "8:00 PM"
     assert events[0].event_date == date(2026, 3, 7)
     assert events[1].name == "Amy Jones Quartet"
-    assert events[1].address == "Blues Bar"
+    assert events[1].venue == "Blues Bar"
 
 
 def test_parse_date_range():
@@ -185,5 +195,43 @@ def test_parse_fallback_gig_format():
     events = parse_rhythmchanges(html, "https://rhythmchanges.ca/gigs/", date(2026, 3, 7), date(2026, 3, 7))
     assert len(events) == 1
     assert events[0].name == "Open Blues Jam"
-    assert events[0].address == "The Cellar"
+    assert events[0].venue == "The Cellar"
     assert events[0].time == "Evening"
+
+
+def test_parse_assigns_next_year_to_january_headers_in_december_query() -> None:
+    # Arrange
+    html = """<h4>Thursday, January 1</h4><ul><li>8:00 PM - Jazz Club, New Year Trio</li></ul>"""
+
+    # Act
+    events = parse_rhythmchanges(html, "https://rhythmchanges.ca/gigs/", date(2026, 12, 28), date(2027, 1, 3))
+
+    # Assert
+    assert [e.event_date for e in events] == [date(2027, 1, 1)]
+
+
+def test_parse_marks_gigs_as_live_music() -> None:
+    # Arrange
+    html = """<h4>Saturday, March 7</h4><ul><li>8:00 PM - Jazz Club, Trio</li></ul>"""
+
+    # Act
+    events = parse_rhythmchanges(html, "https://rhythmchanges.ca/gigs/", date(2026, 3, 7), date(2026, 3, 7))
+
+    # Assert
+    assert events[0].category == "music"
+
+
+def test_listed_through_returns_last_listed_day() -> None:
+    # Arrange
+    html = "<h4>Sunday, March 1</h4><h4>Tuesday, March 31</h4><h4>Not a date</h4>"
+
+    # Act
+    last = listed_through(html, date(2026, 3, 7))
+
+    # Assert
+    assert last == date(2026, 3, 31)
+
+
+def test_listed_through_returns_none_without_day_headers() -> None:
+    # Arrange, Act, Assert
+    assert listed_through("<html></html>", date(2026, 3, 7)) is None

@@ -33,5 +33,8 @@ def parse_infidelsjazz(data: dict, source_url: str, from_date: date, to_date: da
             event_date=event_date,
             source_name="Infidels Jazz",
             source_url=item.get("url", source_url),
+            venue=html.unescape(venue["venue"]) if venue.get("venue") else None,
+            category="music",
+            price=item.get("cost") or None,
         ))
     return events

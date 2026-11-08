@@ -7,7 +7,6 @@ from pathlib import Path
 from src.models import Event
 from src.parsers.infidelsjazz import parse_infidelsjazz
 
-
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "infidelsjazz_sample.json"
 TARGET_DATE = date(2026, 3, 7)
 SOURCE_URL = "https://theinfidelsjazz.ca/wp-json/tribe/events/v1/events/"
@@ -118,3 +117,14 @@ def test_parse_multiple_events():
     assert events[1].city == "Burnaby"
     assert events[0].event_date == TARGET_DATE
     assert events[1].event_date == TARGET_DATE
+
+
+def test_parse_extracts_venue_price_and_music_category() -> None:
+    # Arrange
+    data = json.loads(FIXTURE.read_text())
+
+    # Act
+    events = parse_infidelsjazz(data, "https://theinfidelsjazz.ca", date(2026, 3, 7), date(2026, 3, 7))
+
+    # Assert
+    assert (events[0].venue, events[0].price, events[0].category) == ("Frankie’s Jazz Club", "$10", "music")

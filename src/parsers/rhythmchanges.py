@@ -5,7 +5,9 @@ from datetime import date
 
 from bs4 import BeautifulSoup
 
+from src.cities import city_from_text
 from src.models import Event
+from src.parsers.dates import infer_year
 
 # Month name to number
 _MONTHS = {
@@ -17,21 +19,40 @@ _MONTHS = {
 _GIG_RE = re.compile(r"^(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(.+?),\s*(.+?)(?:\(.*\))?\s*$", re.IGNORECASE)
 
 
-def _parse_day_header(h4_text: str, year: int) -> date | None:
-    """Parse 'Saturday, March 7' into a date object."""
-    # Remove day name prefix
+def _parse_month_day(h4_text: str) -> tuple[int, int] | None:
+    """Parse 'Saturday, March 7' into (3, 7)."""
     m = re.match(r"(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w*,\s+(\w+)\s+(\d+)", h4_text)
     if not m:
         return None
-    month_name = m.group(1).lower()
-    day = int(m.group(2))
-    month = _MONTHS.get(month_name)
+    month = _MONTHS.get(m.group(1).lower())
     if not month:
         return None
+    return month, int(m.group(2))
+
+
+def _parse_day_header(h4_text: str, year: int) -> date | None:
+    """Parse 'Saturday, March 7' into a date object in `year`."""
+    parsed = _parse_month_day(h4_text)
+    if not parsed:
+        return None
     try:
-        return date(year, month, day)
+        return date(year, *parsed)
     except ValueError:
         return None
+
+
+def _header_date(h4_text: str, ref: date) -> date | None:
+    parsed = _parse_month_day(h4_text)
+
+    return infer_year(*parsed, ref) if parsed else None
+
+
+def listed_through(html: str, ref: date) -> date | None:
+    """Last day the page lists, to detect queries that run past the published month."""
+    soup = BeautifulSoup(html, "html.parser")
+    days = [d for h4 in soup.find_all("h4") if (d := _header_date(h4.get_text(strip=True), ref))]
+
+    return max(days, default=None)
 
 
 def _parse_gig_line(text: str) -> tuple[str | None, str | None, str | None]:
@@ -67,7 +88,7 @@ def parse_rhythmchanges(html: str, source_url: str, from_date: date, to_date: da
     events = []
 
     for h4 in soup.find_all("h4"):
-        day_date = _parse_day_header(h4.get_text(strip=True), from_date.year)
+        day_date = _header_date(h4.get_text(strip=True), from_date)
         if not day_date or not (from_date <= day_date <= to_date):
             continue
 
@@ -89,12 +110,14 @@ def parse_rhythmchanges(html: str, source_url: str, from_date: date, to_date: da
 
             events.append(Event(
                 name=event_name or text,
-                city=None,  # Rhythm Changes doesn't list cities
-                address=venue,
+                city=city_from_text(venue),
+                address=None,
                 time=time_str,
                 event_date=day_date,
                 source_name="Rhythm Changes",
                 source_url=source_url,
+                venue=venue,
+                category="music",
             ))
 
     return events
